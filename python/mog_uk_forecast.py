@@ -656,8 +656,8 @@ def update_html(date):
         file.close()
 
         # Split up lines and append new line
-        first_lines = lines[:-10]
-        last_lines = lines[-10:]
+        first_lines = lines[:-5]
+        last_lines = lines[-5:]
         url = f'{URL_START}/{SITE_FNAME}_mog_uk_fcasts.shtml'
         first_lines.append(f'          <li><a href="{url}">'
                            f'{SITE_NAME} MOGREPS-UK Forecasts</a></li>\n')
