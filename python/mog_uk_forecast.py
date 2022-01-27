@@ -21,12 +21,12 @@ import useful_functions as uf
 
 # Import environment constants
 try:
-    HPC_START = os.environ['HPC_START']
+    USER = os.environ['USER']
     HPC_DIR = os.environ['MOG_UK_DIR']
     SCRATCH_DIR = os.environ['SCRATCH_DIR']
     HTML_DIR = os.environ['HTML_DIR']
 except KeyError as err:
-    raise IOError('Environment variable {} not set.'.format(str(err)))
+    raise IOError(f'Environment variable {str(err)} not set.')
 
 # Iris constraints
 U_CON = iris.AttributeConstraint(STASH='m01s00i002')
@@ -415,18 +415,17 @@ def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units):
     cbar_probs.set_ticks(levels)
     cbar_probs.set_ticklabels(['{}%'.format(perc) for perc in levels])
     cbar_probs.ax.tick_params(labelsize=10)
-    cbar_probs.set_label('Probability of {} {} {} '
-                         '{}'.format(param_str, label_type, alt_thresh, units),
-                         fontsize=12)
+    cbar_probs.set_label(f'Probability of {param_str} {label_type} '
+                         f'{alt_thresh} {units}', fontsize=12)
 
     # Figure title
-    fig.suptitle('MOGREPS-UK {} probabilities - cross-section over '
-                 'time'.format(param_str), fontsize=25)
+    fig.suptitle(f'MOGREPS-UK {param_str} probabilities - cross-section over '
+                 'time', fontsize=25)
 
     # Save figure and close plot
     date_str = issue_dt.strftime('%Y%m%d%HZ')
-    fname = ('{}/images/{}/mogreps_x_section_{}'
-             '_{}_{}.png'.format(HTML_DIR, SITE_FNAME, date_str, param, threshold))
+    fname = (f'{HTML_DIR}/images/{SITE_FNAME}/mogreps_x_section_{date_str}'
+             f'_{param}_{threshold}.png')
     fig.savefig(fname)
     plt.close()
 
@@ -545,7 +544,6 @@ def vis_plots(cube_list, start_vdt, end_vdt, m_date):
                 else:
                     hour_cubes[cube_dt].append(cube[ind])
 
-
     # Convert to probabilities for each threshold for each hour cube
     for vdt in hour_cubes:
 
@@ -601,8 +599,7 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units):
 
     # Set limits, labels and legend
     ax.set_ylim(0, 100)
-    ax.set_ylabel(f'Probability (%)',
-                  fontsize=17)
+    ax.set_ylabel('Probability (%)', fontsize=17)
     ax.set_xticks(xtick_locs)
     ax.set_xticklabels(xlabels, fontsize=14)
 
@@ -613,7 +610,7 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units):
     # Save figure and close plot
     date_str = issue_dt.strftime('%Y%m%d%HZ')
     fname = (f'{HTML_DIR}/images/{SITE_FNAME}/mogreps_x_section_{date_str}'
-             + f'_{wx_type}_{threshold}.png')
+             f'_{wx_type}_{threshold}.png')
     fig.savefig(fname)
     plt.close()
 
@@ -623,14 +620,14 @@ def update_html(date):
     Updates html file.
     """
     # File name of html file
-    html_fname = '{}/html/{}_mog_uk_fcasts.shtml'.format(HTML_DIR, SITE_FNAME)
+    html_fname = f'{HTML_DIR}/html/{SITE_FNAME}_mog_uk_fcasts.shtml'
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
 
         # Make html file starting with template
-        template = '{}/html/mog_template.shtml'.format(HTML_DIR)
-        os.system('cp {} {}'.format(template, html_fname))
+        template = f'{HTML_DIR}/html/mog_template.shtml'
+        os.system(f'cp {template} {html_fname}')
 
         # Put in trial-specific stuff
         # Get lines from template
@@ -642,11 +639,11 @@ def update_html(date):
         lines[34] = lines[34].replace('TRIAL', SITE_FNAME)
         lines[48] = lines[48].replace('NAME', SITE_NAME)
         lines[48] = lines[48].replace('HEIGHT', str(SITE_HEIGHT))
-        lines[75] = lines[75].replace('DATE', date)
+        lines[77] = lines[77].replace('DATE', date)
         lines[78] = lines[78].replace('TRIAL', SITE_FNAME)
-        lines[78] = lines[78].replace('NAME', SITE_NAME)
-        lines[87] = lines[87].replace('TRIAL', SITE_FNAME)
-        lines[87] = lines[87].replace('DATE', date)
+        lines[80] = lines[80].replace('NAME', SITE_NAME)
+        lines[89] = lines[89].replace('TRIAL', SITE_FNAME)
+        lines[89] = lines[89].replace('DATE', date)
 
         # Assign to new_lines
         new_lines = lines
@@ -660,11 +657,10 @@ def update_html(date):
         # Split up lines and append new line
         first_lines = lines[:-10]
         last_lines = lines[-10:]
-        first_lines.append(
-            '              <li><a href='
-            '"https://www-nwp/~alanyon/uav/html/{}_mog_uk_fcasts.shtml">'
-            '{} MOGREPS-UK Forecasts</a></li>\n'.format(SITE_FNAME, SITE_NAME)
-            )
+        url = (f'https://www-nwp/~alanyon/uav/html/{SITE_FNAME}_mog_uk_fcasts.'
+               'shtml')
+        first_lines.append(f'              <li><a href="{url}">'
+                           f'{SITE_NAME} MOGREPS-UK Forecasts</a></li>\n')
 
         # Concatenate the lists together and re-write the lines to a new file
         side_lines = first_lines + last_lines
@@ -684,10 +680,8 @@ def update_html(date):
 
         # Edit html file and append/edit the required lines
         first_lines[-1] = first_lines[-1].replace(' selected="selected"', '')
-        first_lines.append(
-            '                        <option selected="selected" '
-            'value="{0}">{0}</option>\n'.format(date)
-            )
+        first_lines.append('                        <option selected='
+                           f'"selected" value="{date}">{date}</option>\n')
         last_lines[-11] = last_lines[-11].replace(last_lines[-11][-82:-71],
                                                   date)
 
@@ -701,7 +695,7 @@ def update_html(date):
     file.close()
 
 
-def get_fname_strs(m_date, start_vdt, end_vdt):
+def get_fname_strs(m_date, start_vdt, end_vdt, hall):
     """
     Determines member numbers and lead times to use.
     """
@@ -709,8 +703,7 @@ def get_fname_strs(m_date, start_vdt, end_vdt):
     date_str = m_date.strftime('%Y%m%dT%H00Z')
 
     # Read filenames on HPC, temporarily ssh-ing onto HPC
-    dirs = subprocess.Popen(['ssh -Y xcel01 ls {}/{}/'.format(HPC_DIR,
-                                                              date_str)],
+    dirs = subprocess.Popen([f'ssh -Y {hall} ls {HPC_DIR}/{date_str}/'],
                             stdout=subprocess.PIPE, shell=True)
     (out, err) = dirs.communicate()
 
@@ -740,7 +733,7 @@ def get_fname_strs(m_date, start_vdt, end_vdt):
     return member_strs, f_nums
 
 
-def lat_lon_orog(m_date, member_str, hour, hpc_start):
+def lat_lon_orog(m_date, member_str, hour, hall):
     """
     Converts standard lat/lon to rotated pole coordinates and gets orography
     cube interpolated to rotated pole lat/lon.
@@ -749,13 +742,12 @@ def lat_lon_orog(m_date, member_str, hour, hpc_start):
     date_str = m_date.strftime('%Y%m%dT%H00Z')
 
     # Define filename on HPC and target filename on scratch
-    fpath = ('{}{}/{}/enuk_um_{}/enukaa_pd000'.format(hpc_start, HPC_DIR,
-                                                      date_str, member_str))
-    scratch_fname = '{}/enukaa_pd000_{}_{}'.format(SCRATCH_DIR, hour,
-                                                   member_str)
+    fpath = (f'{USER}@{hall}:{HPC_DIR}/{date_str}/enuk_um_{member_str}/'
+             'enukaa_pd000')
+    scratch_fname = f'{SCRATCH_DIR}/enukaa_pd000_{hour}_{member_str}'
 
     # Copy file from HPC to scratch directory
-    os.system('scp {} {}'.format(fpath, scratch_fname))
+    os.system(f'scp {fpath} {scratch_fname}')
 
     # If successful, get rotated lat/lon and orography cube from file
     if os.path.exists(scratch_fname):
@@ -771,7 +763,7 @@ def lat_lon_orog(m_date, member_str, hour, hpc_start):
         orog_cube = orog_cube.interpolate(sample_pnts, iris.analysis.Linear())
 
         # Remove file from scratch directory
-        os.system('rm {}'.format(scratch_fname))
+        os.system(f'rm {scratch_fname}')
 
     # Otherwise keep variables as False
     else:
@@ -780,7 +772,7 @@ def lat_lon_orog(m_date, member_str, hour, hpc_start):
     return lat, lon, orog_cube
 
 
-def copy_from_hpc(f_num, m_date, member_str, hour, hpc_start):
+def copy_from_hpc(f_num, m_date, member_str, hour, hall):
     """
     Copies file from HPC to scratch directory.
     """
@@ -795,13 +787,12 @@ def copy_from_hpc(f_num, m_date, member_str, hour, hpc_start):
 
         # Define filenames
         fname = 'enukaa_p{}{}'.format(letter, f_num)
-        fpath = '{}{}/{}/enuk_um_{}/{}'.format(hpc_start, HPC_DIR, date_str,
-                                               member_str, fname)
-        scratch_fname = '{}/{}_{}_{}'.format(SCRATCH_DIR, fname, hour,
-                                             member_str)
+        fpath = (f'{USER}@{hall}:{HPC_DIR}/{date_str}/enuk_um_{member_str}/'
+                 f'{fname}')
+        scratch_fname = f'{SCRATCH_DIR}/{fname}_{hour}_{member_str}'
 
         # Copy to scratch directory and append scratch filename to list
-        os.system('scp {} {}'.format(fpath, scratch_fname))
+        os.system(f'scp {fpath} {scratch_fname}')
         scratch_fnames.append(scratch_fname)
 
     return scratch_fnames
@@ -869,7 +860,7 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date):
 
 
 def data_from_files(start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
-                    hpc_start):
+                    hall):
     """
     Gets data from MOGREPS-UK files, if possible, then sorts out data and
     returns lists of cubes.
@@ -882,7 +873,7 @@ def data_from_files(start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
      rel_hum_cubes, rain_cubes, vis_cubes) = [], [], [], [], []
 
     # Determine ensemble member numbers used and lead times to use
-    member_strs, f_nums = get_fname_strs(m_date, start_vdt, end_vdt)
+    member_strs, f_nums = get_fname_strs(m_date, start_vdt, end_vdt, hall)
 
     # If none found, print message
     if not member_strs:
@@ -894,15 +885,14 @@ def data_from_files(start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
         # Convert lat/lon and get constraints and get orography cube
         # (if needed - only need to do this once)
         if not lat or not lon or not orog_cube:
-            lat, lon, orog_cube = lat_lon_orog(m_date, member_str, hour,
-                                               hpc_start)
+            lat, lon, orog_cube = lat_lon_orog(m_date, member_str, hour, hall)
 
         # Load in each relevant file and get cubes
         for f_num in f_nums:
 
             # Copy surface and model level files across from HPC
             scratch_s, scratch_m = copy_from_hpc(f_num, m_date, member_str,
-                                                 hour, hpc_start)
+                                                 hour, hall)
 
             # Only continue if files have successfully been copied across
             if (os.path.exists(scratch_s) and os.path.exists(scratch_m) and
@@ -949,8 +939,8 @@ def data_from_files(start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
                     print('Vis failed')
 
                 # Remove files from scratch directory
-                os.system('rm {}'.format(scratch_s))
-                os.system('rm {}'.format(scratch_m))
+                os.system(f'rm {scratch_s}')
+                os.system(f'rm {scratch_m}')
 
             # Otherwise, print message
             else:
@@ -992,7 +982,7 @@ def _mp_queue(function, args, queue):
     queue.put(function(*args))
 
 
-def main(new_data, hpc_start):
+def main(new_data, hall):
     """
     Copies files from HPC, extracts data and creates wind, temperature and
     relative humidity cubes. Probabilities are then calculated based on a few
@@ -1000,9 +990,9 @@ def main(new_data, hpc_start):
     HTML page displaying plots is also updated.
     """
     # Make image directory if needed
-    img_dir = '{}/images/{}'.format(HTML_DIR, SITE_FNAME)
+    img_dir = f'{HTML_DIR}/images/{SITE_FNAME}'
     if not os.path.exists(img_dir):
-        os.system('mkdir {}'.format(img_dir))
+        os.system(f'mkdir {img_dir}')
 
     # Time now (only to hour)
     now_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
@@ -1047,7 +1037,7 @@ def main(new_data, hpc_start):
             # function
             args = (data_from_files,
                     [start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
-                     hpc_start], queue)
+                     hall], queue)
             processes.append(Process(target=_mp_queue, args=args))
 
         # Start processes
@@ -1079,13 +1069,13 @@ def main(new_data, hpc_start):
         # Pickle data for later use if needed (to save time)
         uf.pickle_data([wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
                         rain_cube_list, vis_cube_list],
-                       '{}/pickle'.format(SCRATCH_DIR))
+                       f'{SCRATCH_DIR}/pickle')
 
     # For testing, latest pickled data can be used
     else:
         # Unpickle data
         (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list, rain_cube_list,
-         vis_cube_list) = uf.unpickle_data('{}/pickle'.format(SCRATCH_DIR))
+         vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
 
     # Calculate probabilities and make cross-section plots
     probs_and_plots(wind_spd_cube_list, 'wind', start_vdt, end_vdt, rec_m_date)
@@ -1110,18 +1100,16 @@ if __name__ == "__main__":
     except:
         print('WARNING! Arguments not set correctly so will exit python '
               'script')
+        exit()
 
-    main(new_data, HPC_START)
-
-    # # If code fails, try changing HPC hall
-    # try:
-    #     main(new_data, hpc_start)
-    #     print('xcel hall used')
-    # except Exception:
-    #     print('Changing hall')
-    #     hpc_start = hpc_start.replace('xcel', 'xcfl')
-    #     main(new_data, hpc_start)
-    #     print('xcfl hall used')
+    # If code fails, try changing HPC hall
+    try:
+        main(new_data, 'xcfl01')
+        print('xcfl hall used')
+    except Exception:
+        print('Changing hall')
+        main(new_data, 'xcel01')
+        print('xcel hall used')
 
     # Print time
     time_2 = uf.print_time('Finished')

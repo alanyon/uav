@@ -8,11 +8,14 @@ import useful_functions as uf
 
 # Import environment variables
 try:
-    hpc_bd_file = os.environ['HPC_BD_FILE']
+    USER = os.environ['USER']
+    BEST_DATA_DIR = os.environ['BEST_DATA_DIR']
     SCRATCH_DIR = os.environ['SCRATCH_DIR']
     HTML_DIR = os.environ['HTML_DIR']
     DATA_FILE = os.environ['DATA_FILE']
     START_DATE_TIME = os.environ['START_DATE_TIME']
+    START_DATE = os.environ['START_DATE']
+    START_TIME = os.environ['START_TIME']
 except KeyError as err:
     raise IOError('Environment variable {} not set.'.format(str(err)))
 
@@ -62,24 +65,26 @@ COL_HEADS[23:26] = ['low_cld', 'med_cld', 'high_cld', 'tot_cld']
 COL_HEADS[31] = 'precip_rate'
 
 
-def get_bd_df(bd_sites, hpc_bd_file):
+def get_bd_df(bd_sites):
     """
     Reads Best Data csv file, filters data into Pandas dataframes and creates
     some plots.
     """
     # Copy files on HPC to scratch directory, removing previously used file
-    os.system('rm {}'.format(BD_FILE))
-    os.system('scp {} {}'.format(hpc_bd_file, BD_FILE))
+    hpc_bd_file = (f'{USER}@xcel01:{BEST_DATA_DIR}/{START_DATE}T{START_TIME}'
+                   f'00Z/bd_main/SSPA_BEST_FCS_HOURLY_{START_DATE_TIME}_*.csv')
+    os.system(f'rm {BD_FILE}')
+    os.system(f'scp {hpc_bd_file} {BD_FILE}')
 
     # If no file found, try changing HPC hall
     if not os.path.exists(BD_FILE):
         hpc_bd_file = hpc_bd_file.replace('xcel', 'xcfl')
-        os.system('scp {} {}'.format(hpc_bd_file, BD_FILE))
+        os.system(f'scp {hpc_bd_file} {BD_FILE}')
 
     # Make directories for web page if using new trial site
-    trl_img_dir = '{}/images/{}'.format(HTML_DIR, TRIAL_SITE.replace(' ', ''))
+    trl_img_dir = f'{HTML_DIR}/images/{TRIAL_SITE.replace(" ", "")}'
     if not os.path.exists(trl_img_dir):
-        os.system('mkdir {}'.format(trl_img_dir))
+        os.system(f'mkdir {trl_img_dir}')
 
     # Limit number of columns
     pd.set_option('display.max_columns', 50)
@@ -163,9 +168,8 @@ def make_plot(dts, values, y_label, param, name, dist, height,
     fig, ax = plt.subplots(figsize=(15, 7))
 
     # Make nicely formated date and time strings
-    date_strings = ['{:02d}/{:02d}\n{:02d}Z'.format(dts[ind].day,
-                                                    dts[ind].month,
-                                                    dts[ind].hour)
+    date_strings = [(f'{dts[ind].day:02d}/{dts[ind].month:02d}\n'
+                     f'{dts[ind].hour:02d}Z')
                     for ind in range(len(dts))]
 
     # Gap between x ticks, depending on number of days shown on plot
@@ -230,15 +234,14 @@ def make_plot(dts, values, y_label, param, name, dist, height,
     ax.legend(loc='best')
     ax.set_xticks(xtick_locs)
     ax.set_xticklabels(xlabels, fontsize=8)
-    title = ('{}. Elevation of site: {} m. Distance from {}: '
-             '{:.2f}km'.format(param, int(height), TRIAL_SITE, dist))
+    title = (f'{param}. Elevation of site: {int(height)} m. Distance from '
+             f'{TRIAL_SITE}: {dist:.2f}km')
     ax.set_title(title)
     plt.tight_layout()
 
     # Save figure and close plot
-    fname = '{}/images/{}/{}_{}_{}Z.png'.format(HTML_DIR, TRIAL_FNAME, name,
-                                                param.replace(' ', ''),
-                                                START_DATE_TIME)
+    fname = (f'{HTML_DIR}/images/{TRIAL_FNAME}/{name}_{param.replace(" ", "")}'
+             f'_{START_DATE_TIME}Z.png')
     fig.savefig(fname)
     plt.close()
 
@@ -248,14 +251,14 @@ def update_html(bd_sites):
     Updates html file.
     """
     # File name of html file
-    html_fname = '{}/html/{}_bd_fcasts.shtml'.format(HTML_DIR, TRIAL_FNAME)
+    html_fname = f'{HTML_DIR}/html/{TRIAL_FNAME}_bd_fcasts.shtml'
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
 
         # Make html file starting with template
-        template = '{}/html/bd_template.shtml'.format(HTML_DIR)
-        os.system('cp {} {}'.format(template, html_fname))
+        template = f'{HTML_DIR}/html/bd_template.shtml'
+        os.system(f'cp {template} {html_fname}')
 
         # Put in trial-specific stuff
         file = open(html_fname, 'r')
@@ -272,13 +275,12 @@ def update_html(bd_sites):
             if bd_sites[site][3] == 'best':
                 first_site = site.replace(' ', '_')
                 second_lines.append('                        <option '
-                                    'selected="selected" value="{}">{}</'
-                                    'option>\n'.format(first_site, site))
+                                    f'selected="selected" value="{first_site}"'
+                                    f'>{site}</option>\n')
             else:
                 next_site = site.replace(' ', '_')
                 second_lines.append('                        <option '
-                                    'value="{}">{}</'
-                                    'option>\n'.format(next_site, site))
+                                    f'value="{next_site}">{site}</option>\n')
         last_lines[5] = last_lines[5].replace('DATE', START_DATE_TIME)
         last_lines[21] = last_lines[21].replace('TRIAL', TRIAL_FNAME)
         last_lines[21] = last_lines[21].replace('NAME', TRIAL_SITE)
@@ -296,11 +298,10 @@ def update_html(bd_sites):
         file.close()
         first_lines = lines[:-10]
         last_lines = lines[-10:]
-        first_lines.append('              <li><a href='
-                           '"https://www-nwp/~alanyon/uav/html/{}_bd_fcasts.'
-                           'shtml">{} Best Data Forecasts</a></li>\n'.format(
-                                TRIAL_FNAME, TRIAL_SITE
-                                ))
+        url = (f'https://www-nwp/~alanyon/uav/html/{TRIAL_FNAME}_bd_fcasts.'
+               'shtml')
+        first_lines.append(f'              <li><a href="{url}">{TRIAL_SITE} '
+                           'Best Data Forecasts</a></li>\n')
         # Concatenate the lists together
         side_lines = first_lines + last_lines
 
@@ -323,8 +324,9 @@ def update_html(bd_sites):
         # Edit html file and append/edit the required lines
         first_lines[-1] = first_lines[-1].replace(' selected="selected"', '')
         first_lines.append('                        '
-                           '<option selected="selected" value="{0}Z">{0}Z'
-                           '</option>\n'.format(START_DATE_TIME))
+                           '<option selected="selected" '
+                           f'value="{START_DATE_TIME}Z">{START_DATE_TIME}Z'
+                           '</option>\n')
         last_lines[-11] = last_lines[-11].replace(last_lines[-11][-74:-64],
                                                   START_DATE_TIME)
 
@@ -357,8 +359,8 @@ def main():
     print(bd_sites_mort)
 
     # Get forecasts based on selection of Best Data sites and make some plots
-    # get_bd_df(bd_sites, hpc_bd_file)
-    get_bd_df(bd_sites_mort, hpc_bd_file)
+    # get_bd_df(bd_sites)
+    get_bd_df(bd_sites_mort)
 
     # Update html page
     update_html(bd_sites)
