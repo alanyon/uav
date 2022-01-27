@@ -16,6 +16,8 @@ try:
     START_DATE_TIME = os.environ['START_DATE_TIME']
     START_DATE = os.environ['START_DATE']
     START_TIME = os.environ['START_TIME']
+    URL_START = os.environ['URL_START']
+    SIDEBAR = os.environ['SIDEBAR']
 except KeyError as err:
     raise IOError('Environment variable {} not set.'.format(str(err)))
 
@@ -292,21 +294,19 @@ def update_html(bd_sites):
         new_lines = first_lines + second_lines + last_lines
 
         # Add site to sidebar
-        sidebar = HTML_DIR.replace('uav', 'sidebar.shtml')
-        file = open(sidebar, 'r')
+        file = open(SIDEBAR, 'r')
         lines = file.readlines()
         file.close()
-        first_lines = lines[:-10]
-        last_lines = lines[-10:]
-        url = (f'https://www-nwp/~alanyon/uav/html/{TRIAL_FNAME}_bd_fcasts.'
-               'shtml')
-        first_lines.append(f'              <li><a href="{url}">{TRIAL_SITE} '
+        first_lines = lines[:-5]
+        last_lines = lines[-5:]
+        url = f'{URL_START}/{TRIAL_FNAME}_bd_fcasts.shtml'
+        first_lines.append(f'          <li><a href="{url}">{TRIAL_SITE} '
                            'Best Data Forecasts</a></li>\n')
         # Concatenate the lists together
         side_lines = first_lines + last_lines
 
         # Re-write the lines to a new file
-        file = open(sidebar, 'w')
+        file = open(SIDEBAR, 'w')
         for line in side_lines:
             file.write(line)
         file.close()

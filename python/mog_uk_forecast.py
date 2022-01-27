@@ -25,6 +25,8 @@ try:
     HPC_DIR = os.environ['MOG_UK_DIR']
     SCRATCH_DIR = os.environ['SCRATCH_DIR']
     HTML_DIR = os.environ['HTML_DIR']
+    URL_START = os.environ['URL_START']
+    SIDEBAR = os.environ['SIDEBAR']
 except KeyError as err:
     raise IOError(f'Environment variable {str(err)} not set.')
 
@@ -649,22 +651,20 @@ def update_html(date):
         new_lines = lines
 
         # Add site to sidebar
-        sidebar = HTML_DIR.replace('uav', 'sidebar.shtml')
-        file = open(sidebar, 'r')
+        file = open(SIDEBAR, 'r')
         lines = file.readlines()
         file.close()
 
         # Split up lines and append new line
         first_lines = lines[:-10]
         last_lines = lines[-10:]
-        url = (f'https://www-nwp/~alanyon/uav/html/{SITE_FNAME}_mog_uk_fcasts.'
-               'shtml')
-        first_lines.append(f'              <li><a href="{url}">'
+        url = f'{URL_START}/{SITE_FNAME}_mog_uk_fcasts.shtml'
+        first_lines.append(f'          <li><a href="{url}">'
                            f'{SITE_NAME} MOGREPS-UK Forecasts</a></li>\n')
 
         # Concatenate the lists together and re-write the lines to a new file
         side_lines = first_lines + last_lines
-        file = open(sidebar, 'w')
+        file = open(SIDEBAR, 'w')
         for line in side_lines:
             file.write(line)
         file.close()
