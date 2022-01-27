@@ -1,0 +1,15 @@
+/net/project/ukmo/scitools/opt_scitools/environments/default/2020_10_12/lib/python3.6/site-packages/iris/fileformats/rules.py:334: UserWarning: Unable to create instance of HybridHeightFactory. The source data contains no field(s) for 'orography'.
+  warnings.warn(msg.format(factory=factory_name))
+started 2021-04-30 17:41:11.742504
+surface_altitude / (m)              (grid_latitude: 808; grid_longitude: 621)
+     Dimension coordinates:
+          grid_latitude                           x                    -
+          grid_longitude                          -                    x
+     Scalar coordinates:
+          forecast_period: 0.0 hours
+          forecast_reference_time: 2021-04-15 12:00:00
+          time: 2021-04-15 12:00:00
+     Attributes:
+          STASH: m01s00i033
+          source: Data from Met Office Unified Model
+          um_version: 11.5
