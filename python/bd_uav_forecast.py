@@ -222,10 +222,14 @@ def make_plot(dts, values, y_label, param, name, dist, height,
         ax.set_ylabel(y_label)
 
         # Plot fixed line thresholds
-        colours = ['g', 'orange', 'r']
-        labels = ['Safe', 'Cautionary', 'Must not encounter']
+        if param == 'Dry Bulb Temperature':
+            colours = ['r', 'orange', 'r']
+            labels = ['Must not encounter', 'Cautionary', '']
+        else:
+            colours = ['g', 'orange', 'r']
+            labels = ['Safe', 'Cautionary', 'Must not encounter']
         for thresh, colour, label in zip(thresholds, colours, labels):
-            if thresh:
+            if thresh is not None:
                 xlims = ax.get_xlim()
                 ax.hlines(thresh, ax.get_xlim()[0], ax.get_xlim()[1],
                           colors=colour, label=label)
