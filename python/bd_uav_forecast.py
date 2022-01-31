@@ -90,7 +90,7 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
     pd.set_option('display.max_columns', 50)
 
     # For changing date formats
-    dateparse = lambda x: pd.datetime.strptime(x, '%d-%m-%Y%H:%M')
+    dateparse = lambda x: datetime.strptime(x, '%d-%m-%Y%H:%M')
 
     # Create dataframe from csv file data
     bd_df = pd.read_csv(BD_FILE,
