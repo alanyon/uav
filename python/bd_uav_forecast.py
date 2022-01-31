@@ -27,13 +27,16 @@ MPH_TO_KTS = 0.86897423357831
 
 # ==============================================================================
 # Change these bits for new trial site/date
-TRIAL_SITE = 'Morton-in-Marsh'
-SITE_LAT = 51.997222
-SITE_LON = -1.680000
-SITE_HEIGHT = 132  # metres
+TRIAL_SITES = ['National Grid']
+SITE_LATS = [53.145556]
+SITE_LONS = [-0.991389]
+TRIAL_HEIGHTS = [77]  # metres
+FIRST_DTS = [datetime(2022, 2, 14, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 2, 19, 1)]  # Year, month, day, hour
+# ==============================================================================
+
+# Shouldn't have to change any of the following but can if necessary
 RADIUS_LIMIT = 5  # kilometres
-FIRST_DT = datetime(2022, 1, 27, 0)  # Year, month, day, hour
-LAST_DT = datetime(2022, 1, 29, 1)  # Year, month, day, hour
 # Parameter thresholds
 TEMP_THRESHOLDS = [0, 25, 30]
 # Wind thresholds given in mph but need to be converted to knots
@@ -41,12 +44,6 @@ MEAN_THRESHOLDS = [10 * MPH_TO_KTS, 15 * MPH_TO_KTS, 20 * MPH_TO_KTS]
 GUST_THRESHOLDS = [20, 25 * MPH_TO_KTS, 30 * MPH_TO_KTS]
 REL_HUM_THRESHOLDS = [40, None, 95]
 VIS_THRESHOLDS = [1000, 500, 200]
-
-# ==============================================================================
-
-# Trial name with no spaces for naming files
-TRIAL_FNAME = TRIAL_SITE.replace(' ', '_')
-
 # Best data filename
 BD_FILE = '{}/bd_file.csv'.format(SCRATCH_DIR)
 # Columns needed from best date csv file
@@ -67,7 +64,7 @@ COL_HEADS[23:26] = ['low_cld', 'med_cld', 'high_cld', 'tot_cld']
 COL_HEADS[31] = 'precip_rate'
 
 
-def get_bd_df(bd_sites):
+def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
     """
     Reads Best Data csv file, filters data into Pandas dataframes and creates
     some plots.
@@ -84,7 +81,7 @@ def get_bd_df(bd_sites):
         os.system(f'scp {hpc_bd_file} {BD_FILE}')
 
     # Make directories for web page if using new trial site
-    trl_img_dir = f'{HTML_DIR}/images/{TRIAL_SITE.replace(" ", "")}'
+    trl_img_dir = f'{HTML_DIR}/images/{trial_site.replace(" ", "_")}'
     if not os.path.exists(trl_img_dir):
         os.system(f'mkdir {trl_img_dir}')
 
@@ -120,7 +117,7 @@ def get_bd_df(bd_sites):
         dts = uf.dts_from_pandas(site_df['forecast_time'].values)
 
         # Select for required dates
-        dates_select = np.where((dts >= FIRST_DT) & (dts < LAST_DT))
+        dates_select = np.where((dts >= first_dt) & (dts < last_dt))
 
         # Get values, converting winds to knots, only for required dates
         new_dts = dts[dates_select]
@@ -142,25 +139,27 @@ def get_bd_df(bd_sites):
 
         # Make some plots (threholds in mph)
         make_plot(new_dts, temps, 'deg C', 'Dry Bulb Temperature', name,
-                  site_dist, site_height, thresholds=TEMP_THRESHOLDS)
+                  site_dist, site_height, trial_site,
+                  thresholds=TEMP_THRESHOLDS)
         make_plot(new_dts, precip_rates, 'mm/hr', 'Precipitation Rate', name,
-                  site_dist, site_height)
+                  site_dist, site_height, trial_site)
         make_plot(new_dts, wind_means, 'knots', 'Wind means', name, site_dist,
-                  site_height, thresholds=MEAN_THRESHOLDS)
+                  site_height, trial_site, thresholds=MEAN_THRESHOLDS)
         make_plot(new_dts, wind_gusts, 'knots', 'Wind gusts', name, site_dist,
-                  site_height, thresholds=GUST_THRESHOLDS)
+                  site_height, trial_site, thresholds=GUST_THRESHOLDS)
         make_plot(new_dts, wind_dirs, 'degrees', 'Wind directions', name,
-                  site_dist, site_height)
+                  site_dist, site_height, trial_site)
         make_plot(new_dts, rel_hum, '%', 'Relative humidity', name, site_dist,
-                  site_height, thresholds=REL_HUM_THRESHOLDS)
+                  site_height, trial_site, thresholds=REL_HUM_THRESHOLDS)
         make_plot(new_dts, visibilities, 'metres', 'Visibility', name,
-                  site_dist, site_height, thresholds=VIS_THRESHOLDS)
+                  site_dist, site_height, trial_site,
+                  thresholds=VIS_THRESHOLDS)
         make_plot(new_dts, [low_cld, med_cld, high_cld], 'Oktas', 'Cloud',
-                  name, site_dist, site_height, multiple=True,
+                  name, site_dist, site_height, trial_site, multiple=True,
                   labels=cld_labels)
 
 
-def make_plot(dts, values, y_label, param, name, dist, height,
+def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
               multiple=False, two_scales=False, labels=[],
               thresholds=[None, None, None]):
     """
@@ -241,23 +240,24 @@ def make_plot(dts, values, y_label, param, name, dist, height,
     ax.set_xticks(xtick_locs)
     ax.set_xticklabels(xlabels, fontsize=8)
     title = (f'{param}. Elevation of site: {int(height)} m. Distance from '
-             f'{TRIAL_SITE}: {dist:.2f}km')
+             f'{trial_site}: {dist:.2f}km')
     ax.set_title(title)
     plt.tight_layout()
 
     # Save figure and close plot
-    fname = (f'{HTML_DIR}/images/{TRIAL_FNAME}/{name}_{param.replace(" ", "")}'
-             f'_{START_DATE_TIME}Z.png')
+    fname = (f'{HTML_DIR}/images/{trial_site.replace(" ", "_")}/{name}_'
+             f'{param.replace(" ", "")}_{START_DATE_TIME}Z.png')
     fig.savefig(fname)
     plt.close()
 
 
-def update_html(bd_sites):
+def update_html(bd_sites, trial_site, trial_height):
     """
     Updates html file.
     """
     # File name of html file
-    html_fname = f'{HTML_DIR}/html/{TRIAL_FNAME}_bd_fcasts.shtml'
+    trial_fname = trial_site.replace(' ', '_')
+    html_fname = (f'{HTML_DIR}/html/{trial_fname}_bd_fcasts.shtml')
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
@@ -274,9 +274,10 @@ def update_html(bd_sites):
         second_lines = lines[35:54]
         last_lines = lines[54:]
 
-        first_lines[-1] = first_lines[-1].replace('TRIAL', TRIAL_FNAME)
-        second_lines[14] = second_lines[14].replace('TRIAL', TRIAL_SITE)
-        second_lines[14] = second_lines[14].replace('HEIGHT', str(SITE_HEIGHT))
+        first_lines[-1] = first_lines[-1].replace('TRIAL', trial_fname)
+        second_lines[14] = second_lines[14].replace('TRIAL', trial_site)
+        second_lines[14] = second_lines[14].replace('HEIGHT',
+                                                    str(trial_height))
         for ind, site in enumerate(bd_sites):
             if bd_sites[site][3] == 'best':
                 first_site = site.replace(' ', '_')
@@ -288,9 +289,9 @@ def update_html(bd_sites):
                 second_lines.append('                        <option '
                                     f'value="{next_site}">{site}</option>\n')
         last_lines[5] = last_lines[5].replace('DATE', START_DATE_TIME)
-        last_lines[21] = last_lines[21].replace('TRIAL', TRIAL_FNAME)
-        last_lines[21] = last_lines[21].replace('NAME', TRIAL_SITE)
-        last_lines[-11] = last_lines[-11].replace('TRIAL', TRIAL_FNAME)
+        last_lines[21] = last_lines[21].replace('TRIAL', trial_fname)
+        last_lines[21] = last_lines[21].replace('NAME', trial_site)
+        last_lines[-11] = last_lines[-11].replace('TRIAL', trial_fname)
         last_lines[-11] = last_lines[-11].replace('SITE', first_site)
         last_lines[-11] = last_lines[-11].replace('DATE', START_DATE_TIME)
 
@@ -303,8 +304,8 @@ def update_html(bd_sites):
         file.close()
         first_lines = lines[:-5]
         last_lines = lines[-5:]
-        url = f'{URL_START}/{TRIAL_FNAME}_bd_fcasts.shtml'
-        first_lines.append(f'          <li><a href="{url}">{TRIAL_SITE} '
+        url = f'{URL_START}/{trial_fname}_bd_fcasts.shtml'
+        first_lines.append(f'          <li><a href="{url}">{trial_site} '
                            'Best Data Forecasts</a></li>\n')
         # Concatenate the lists together
         side_lines = first_lines + last_lines
@@ -350,24 +351,22 @@ def main():
     location and elevation. Then creates plots for given Best Data sites, based
     on Best Data and updates a HTML page displaying the plots.
     """
-    # Find most suitable Best Data site
-    bd_sites = uf.best_bd_site(DATA_FILE, SITE_LAT, SITE_LON, SITE_HEIGHT,
-                               RADIUS_LIMIT)
+    # Loop through each trial site
+    for (trial_site, site_lat, site_lon,
+         trial_height, first_dt, last_dt) in zip(TRIAL_SITES, SITE_LATS,
+                                                 SITE_LONS, TRIAL_HEIGHTS,
+                                                 FIRST_DTS, LAST_DTS):
 
-    # Just for Morten-In-Marsh
-    bd_sites_mort = {}
-    for key in bd_sites:
-        if 'FT' not in key:
-            bd_sites_mort[key] = bd_sites[key]
+        # Find most suitable Best Data site
+        bd_sites = uf.best_bd_site(DATA_FILE, site_lat, site_lon, trial_height,
+                                   RADIUS_LIMIT)
 
-    print(bd_sites_mort)
+        # Get forecasts based on selection of Best Data sites and make some
+        # plots
+        get_bd_df(bd_sites, trial_site, first_dt, last_dt)
 
-    # Get forecasts based on selection of Best Data sites and make some plots
-    # get_bd_df(bd_sites)
-    get_bd_df(bd_sites_mort)
-
-    # Update html page
-    update_html(bd_sites)
+        # Update html page
+        update_html(bd_sites, trial_site, trial_height)
 
 
 if __name__ == "__main__":

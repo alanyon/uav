@@ -45,16 +45,15 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DT = datetime(2022, 1, 28, 0)  # Year, month, day, hour
-LAST_DT = datetime(2022, 1, 29, 1)  # Year, month, day, hour
+FIRST_DTS = [datetime(2022, 1, 31, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 2, 2, 1)]  # Year, month, day, hour
 # Location/height/name of site
-LAT, LON = 51.997222, -1.680000
-SITE_HEIGHT = 132
-SITE_NAME = 'Morton-in-Marsh'
+LATS = [53.145556]
+LONS = [-0.991389]
+SITE_HEIGHTS = [77]
+SITE_NAMES = ['National Grid']
 # ==============================================================================
 
-# For use in filenames
-SITE_FNAME = SITE_NAME.replace(' ', '_')
 # Lead time numbers used in filenames
 FNAME_NUMS = [str(num).zfill(3) for num in range(0, 126, 3)]
 # For converting mph to knots
@@ -70,7 +69,7 @@ VIS_THRESHS = [10000, 5000, 1000, 500, 200]
 REPSILON = 0.62198
 
 
-def convert_lat_lon(fname):
+def convert_lat_lon(fname, lat, lon):
     """
     Converts standard lat/lon coordinates to rotated pole coordinates.
     """
@@ -82,9 +81,10 @@ def convert_lat_lon(fname):
     pole_lat = cube.coord_system().grid_north_pole_latitude
 
     # Convert latitude and longitude points
-    lon, lat = rotate_pole(np.array(LON), np.array(LAT), pole_lon, pole_lat)
+    rot_lon, rot_lat = rotate_pole(np.array(lon), np.array(lat), pole_lon,
+                                   pole_lat)
 
-    return lat[0], lon[0]
+    return rot_lat[0], rot_lon[0]
 
 
 def surf_to_levels(cube_s, cube_m):
@@ -363,7 +363,8 @@ def calc_probs(cube, threshold, temp_thresh):
     return probs_cube
 
 
-def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units):
+def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units,
+           site_fname):
     """
     Makes cross section plot over time.
     """
@@ -426,7 +427,7 @@ def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units):
 
     # Save figure and close plot
     date_str = issue_dt.strftime('%Y%m%d%HZ')
-    fname = (f'{HTML_DIR}/images/{SITE_FNAME}/mogreps_x_section_{date_str}'
+    fname = (f'{HTML_DIR}/images/{site_fname}/mogreps_x_section_{date_str}'
              f'_{param}_{threshold}.png')
     fig.savefig(fname)
     plt.close()
@@ -458,7 +459,7 @@ def vis_probs(cube, threshold):
     return probs_cube
 
 
-def rain_plots(cube_list, start_vdt, end_vdt, m_date):
+def rain_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
     """
     Makes cross section plot over time.
     """
@@ -516,11 +517,11 @@ def rain_plots(cube_list, start_vdt, end_vdt, m_date):
 
     # Make some plots
     [prob_plot(probs_cube, m_date, thresh, 'rain',
-               'max rate rate in hour exceeding', 'mm hr-1')
+               'max rate rate in hour exceeding', 'mm hr-1', site_fname)
      for probs_cube, thresh in zip(merged_probs, RAIN_THRESHS)]
 
 
-def vis_plots(cube_list, start_vdt, end_vdt, m_date):
+def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
     """
     Makes cross section plot over time.
     """
@@ -562,11 +563,13 @@ def vis_plots(cube_list, start_vdt, end_vdt, m_date):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make some plots
-    [prob_plot(probs_cube, m_date, thresh, 'vis', '1.5m visibility below', 'm')
+    [prob_plot(probs_cube, m_date, thresh, 'vis', '1.5m visibility below', 'm',
+               site_fname)
      for probs_cube, thresh in zip(merged_probs, VIS_THRESHS)]
 
 
-def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units):
+def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units,
+              site_fname):
 
     # Colours and probability levels used in plot
     levels = np.array([0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 100])
@@ -592,7 +595,7 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units):
     # Define x axis ticks and labels
     xtick_locs, xlabels = [], []
     for ind, date in enumerate(dates):
-        if ind % gap == 0:
+        if gap == 0 or ind % gap == 0:
             xtick_locs.append(ind)
             xlabels.append (date)
 
@@ -611,18 +614,18 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units):
 
     # Save figure and close plot
     date_str = issue_dt.strftime('%Y%m%d%HZ')
-    fname = (f'{HTML_DIR}/images/{SITE_FNAME}/mogreps_x_section_{date_str}'
+    fname = (f'{HTML_DIR}/images/{site_fname}/mogreps_x_section_{date_str}'
              f'_{wx_type}_{threshold}.png')
     fig.savefig(fname)
     plt.close()
 
 
-def update_html(date):
+def update_html(date, site_height, site_name, site_fname):
     """
     Updates html file.
     """
     # File name of html file
-    html_fname = f'{HTML_DIR}/html/{SITE_FNAME}_mog_uk_fcasts.shtml'
+    html_fname = f'{HTML_DIR}/html/{site_fname}_mog_uk_fcasts.shtml'
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
@@ -638,13 +641,13 @@ def update_html(date):
         file.close()
 
         # Change bits specific to trial
-        lines[34] = lines[34].replace('TRIAL', SITE_FNAME)
-        lines[48] = lines[48].replace('NAME', SITE_NAME)
-        lines[48] = lines[48].replace('HEIGHT', str(SITE_HEIGHT))
+        lines[34] = lines[34].replace('TRIAL', site_fname)
+        lines[48] = lines[48].replace('NAME', site_name)
+        lines[48] = lines[48].replace('HEIGHT', str(site_height))
         lines[77] = lines[77].replace('DATE', date)
-        lines[78] = lines[78].replace('TRIAL', SITE_FNAME)
-        lines[80] = lines[80].replace('NAME', SITE_NAME)
-        lines[89] = lines[89].replace('TRIAL', SITE_FNAME)
+        lines[78] = lines[78].replace('TRIAL', site_fname)
+        lines[80] = lines[80].replace('NAME', site_name)
+        lines[89] = lines[89].replace('TRIAL', site_fname)
         lines[89] = lines[89].replace('DATE', date)
 
         # Assign to new_lines
@@ -658,9 +661,9 @@ def update_html(date):
         # Split up lines and append new line
         first_lines = lines[:-5]
         last_lines = lines[-5:]
-        url = f'{URL_START}/{SITE_FNAME}_mog_uk_fcasts.shtml'
+        url = f'{URL_START}/{site_fname}_mog_uk_fcasts.shtml'
         first_lines.append(f'          <li><a href="{url}">'
-                           f'{SITE_NAME} MOGREPS-UK Forecasts</a></li>\n')
+                           f'{site_name} MOGREPS-UK Forecasts</a></li>\n')
 
         # Concatenate the lists together and re-write the lines to a new file
         side_lines = first_lines + last_lines
@@ -733,7 +736,7 @@ def get_fname_strs(m_date, start_vdt, end_vdt, hall):
     return member_strs, f_nums
 
 
-def lat_lon_orog(m_date, member_str, hour, hall):
+def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
     """
     Converts standard lat/lon to rotated pole coordinates and gets orography
     cube interpolated to rotated pole lat/lon.
@@ -753,7 +756,7 @@ def lat_lon_orog(m_date, member_str, hour, hall):
     if os.path.exists(scratch_fname):
 
         # Convert lat/lon to rotated pole coordinates
-        lat, lon = convert_lat_lon(scratch_fname)
+        lat, lon = convert_lat_lon(scratch_fname, lat, lon)
 
         # Get orography cube
         orog_cube = iris.load_cube(scratch_fname, OROG_CON)
@@ -798,7 +801,7 @@ def copy_from_hpc(f_num, m_date, member_str, hour, hall):
     return scratch_fnames
 
 
-def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date):
+def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     """
     Calculates probabilities and makes cross-section plots.
     """
@@ -854,13 +857,14 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make cross section plots
-    [x_plot(probs_cube, m_date, param, thresh, alt_thresh, temp_thresh, units)
+    [x_plot(probs_cube, m_date, param, thresh, alt_thresh, temp_thresh, units,
+            site_fname)
      for probs_cube, thresh, alt_thresh in zip(merged_probs, thresholds,
                                                alt_threshs)]
 
 
-def data_from_files(start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
-                    hall):
+def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
+                    hour, now_hour, hall):
     """
     Gets data from MOGREPS-UK files, if possible, then sorts out data and
     returns lists of cubes.
@@ -884,8 +888,9 @@ def data_from_files(start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
 
         # Convert lat/lon and get constraints and get orography cube
         # (if needed - only need to do this once)
-        if not lat or not lon or not orog_cube:
-            lat, lon, orog_cube = lat_lon_orog(m_date, member_str, hour, hall)
+        if not rot_lat or not rot_lon or not orog_cube:
+            rot_lat, rot_lon, orog_cube = lat_lon_orog(lat, lon, m_date,
+                                                       member_str, hour, hall)
 
         # Load in each relevant file and get cubes
         for f_num in f_nums:
@@ -989,105 +994,120 @@ def main(new_data, hall):
     thresholds and cross-section plots are created and saved as png files.
     HTML page displaying plots is also updated.
     """
-    # Make image directory if needed
-    img_dir = f'{HTML_DIR}/images/{SITE_FNAME}'
-    if not os.path.exists(img_dir):
-        os.system(f'mkdir {img_dir}')
+    # Loop through all sites
+    for (first_dt, last_dt, lat,
+         lon, site_height, site_name) in zip(FIRST_DTS, LAST_DTS, LATS, LONS,
+                                             SITE_HEIGHTS, SITE_NAMES):
 
-    # Time now (only to hour)
-    now_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        # For naming files
+        site_fname = site_name.replace(' ', '_')
 
-    # Issue date/time of most recent MOGREPS-UK file to use
-    rec_m_date = now_hour - timedelta(hours=3)
+        # Make image directory if needed
+        img_dir = f'{HTML_DIR}/images/{site_name.replace(" ", "_")}'
+        if not os.path.exists(img_dir):
+            os.system(f'mkdir {img_dir}')
 
-    # Determine how far out to go based on the oldest MOGREPS-UK file used
-    latest_lead_vdt = now_hour - timedelta(hours=8) + timedelta(hours=126)
+        # Calculate period of forecast from first and ast dts
+        fcast_period = int((last_dt - first_dt).total_seconds() / 3600) - 1
 
-    # Go as far out as possible up to day of forecast
-    if latest_lead_vdt <= LAST_DT:
-        start_vdt = latest_lead_vdt - timedelta(hours=24)
-        end_vdt = latest_lead_vdt
-    else:
-        end_vdt = LAST_DT
-        if rec_m_date >= FIRST_DT:
-            start_vdt = rec_m_date
+        # Time now (only to hour)
+        now_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+
+        # Issue date/time of most recent MOGREPS-UK file to use
+        rec_m_date = now_hour - timedelta(hours=3)
+
+        # Determine how far out to go based on the oldest MOGREPS-UK file used
+        latest_lead_vdt = now_hour - timedelta(hours=8) + timedelta(hours=126)
+
+        # Go as far out as possible up to day of forecast
+        if latest_lead_vdt <= last_dt:
+            start_vdt = latest_lead_vdt - timedelta(hours=fcast_period)
+            end_vdt = latest_lead_vdt
         else:
-            start_vdt = FIRST_DT
+            end_vdt = last_dt
+            if rec_m_date >= first_dt:
+                start_vdt = rec_m_date
+            else:
+                start_vdt = first_dt
 
-    if new_data == 'yes':
+        if new_data == 'yes':
 
-        # Start these as False and update later (only need to assign once)
-        lon, lat, orog_cube = False, False, False
+            # Start these as False and update later (only need to assign once)
+            rot_lon, rot_lat, orog_cube = False, False, False
 
-        # To add cubes to
-        wind_spd_cube_list = iris.cube.CubeList([])
-        temp_cube_list = iris.cube.CubeList([])
-        rel_hum_cube_list = iris.cube.CubeList([])
-        rain_cube_list = iris.cube.CubeList([])
-        vis_cube_list = iris.cube.CubeList([])
+            # To add cubes to
+            wind_spd_cube_list = iris.cube.CubeList([])
+            temp_cube_list = iris.cube.CubeList([])
+            rel_hum_cube_list = iris.cube.CubeList([])
+            rain_cube_list = iris.cube.CubeList([])
+            vis_cube_list = iris.cube.CubeList([])
 
-        # Use multiprocessing to process each hour in parellel
-        queue = Queue()
-        processes = []
+            # Use multiprocessing to process each hour in parellel
+            queue = Queue()
+            processes = []
 
-        # Get last 6 hours of MOGREPS-UK files (3 members per file)
-        for hour in range(8, 2, -1):
+            # Get last 6 hours of MOGREPS-UK files (3 members per file)
+            for hour in range(8, 2, -1):
 
-            # Add to processes list for multiprocessing, using data_from_files
-            # function
-            args = (data_from_files,
-                    [start_vdt, end_vdt, lat, lon, orog_cube, hour, now_hour,
-                     hall], queue)
-            processes.append(Process(target=_mp_queue, args=args))
+                # Add to processes list for multiprocessing, using
+                # data_from_files function
+                args = (data_from_files,
+                        [start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
+                         orog_cube, hour, now_hour, hall], queue)
+                processes.append(Process(target=_mp_queue, args=args))
 
-        # Start processes
-        for process in processes:
-            process.start()
+            # Start processes
+            for process in processes:
+                process.start()
 
-        # Collect output from processes and close queue
-        out_list = [queue.get() for _ in processes]
-        queue.close()
+            # Collect output from processes and close queue
+            out_list = [queue.get() for _ in processes]
+            queue.close()
 
-        # Wait for all processes to complete before continuing
-        for process in processes:
-            process.join
+            # Wait for all processes to complete before continuing
+            for process in processes:
+                process.join
 
-        # Append output to cubelists
-        for item in out_list:
-            wind_cubes, temp_cubes, rel_hum_cubes, rain_cubes, vis_cubes = item
-            for wind_cube in wind_cubes:
-                wind_spd_cube_list.append(wind_cube)
-            for temp_cube in temp_cubes:
-                temp_cube_list.append(temp_cube)
-            for rel_hum_cube in rel_hum_cubes:
-                rel_hum_cube_list.append(rel_hum_cube)
-            for rain_cube in rain_cubes:
-                rain_cube_list.append(rain_cube)
-            for vis_cube in vis_cubes:
-                vis_cube_list.append(vis_cube)
+            # Append output to cubelists
+            for item in out_list:
+                (wind_cubes, temp_cubes,
+                 rel_hum_cubes, rain_cubes, vis_cubes) = item
+                for wind_cube in wind_cubes:
+                    wind_spd_cube_list.append(wind_cube)
+                for temp_cube in temp_cubes:
+                    temp_cube_list.append(temp_cube)
+                for rel_hum_cube in rel_hum_cubes:
+                    rel_hum_cube_list.append(rel_hum_cube)
+                for rain_cube in rain_cubes:
+                    rain_cube_list.append(rain_cube)
+                for vis_cube in vis_cubes:
+                    vis_cube_list.append(vis_cube)
 
-        # Pickle data for later use if needed (to save time)
-        uf.pickle_data([wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
-                        rain_cube_list, vis_cube_list],
-                       f'{SCRATCH_DIR}/pickle')
+            # Pickle data for later use if needed (to save time)
+            uf.pickle_data([wind_spd_cube_list, temp_cube_list,
+                            rel_hum_cube_list, rain_cube_list, vis_cube_list],
+                           f'{SCRATCH_DIR}/pickle')
 
-    # For testing, latest pickled data can be used
-    else:
-        # Unpickle data
-        (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list, rain_cube_list,
-         vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
+        # For testing, latest pickled data can be used
+        else:
+            # Unpickle data
+            (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
+             rain_cube_list,
+             vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
 
-    # Calculate probabilities and make cross-section plots
-    probs_and_plots(wind_spd_cube_list, 'wind', start_vdt, end_vdt, rec_m_date)
-    probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date)
-    probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt, end_vdt,
-                    rec_m_date)
-    rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date)
-    vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date)
+        # Calculate probabilities and make cross-section plots
+        probs_and_plots(wind_spd_cube_list, 'wind', start_vdt, end_vdt,
+                        rec_m_date, site_fname)
+        probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date,
+                        site_fname)
+        probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
+                        end_vdt, rec_m_date, site_fname)
+        rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
+        vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
 
-    # Update HTML page
-    date_str = rec_m_date.strftime('%Y%m%d%HZ')
-    update_html(date_str)
+        # Update HTML page
+        date_str = rec_m_date.strftime('%Y%m%d%HZ')
+        update_html(date_str, site_height, site_name, site_fname)
 
 
 if __name__ == "__main__":
@@ -1104,7 +1124,7 @@ if __name__ == "__main__":
 
     main(new_data, 'xcfl01')
 
-    # If code fails, try changing HPC hall
+    # # If code fails, try changing HPC hall
     # try:
     #     main(new_data, 'xcfl01')
     #     print('xcfl hall used')
