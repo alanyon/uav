@@ -40,10 +40,11 @@ RADIUS_LIMIT = 5  # kilometres
 # Parameter thresholds
 TEMP_THRESHOLDS = [0, 25, 30]
 # Wind thresholds given in mph but need to be converted to knots
-MEAN_THRESHOLDS = [10 * MPH_TO_KTS, 15 * MPH_TO_KTS, 20 * MPH_TO_KTS]
-GUST_THRESHOLDS = [20, 25 * MPH_TO_KTS, 30 * MPH_TO_KTS]
-REL_HUM_THRESHOLDS = [40, None, 95]
-VIS_THRESHOLDS = [1000, 500, 200]
+MEAN_THRESHOLDS = [12, 16]
+GUST_THRESHOLDS = [15, 20]
+REL_HUM_THRESHOLDS = [40, 95]
+VIS_THRESHOLDS = [1000, 200]
+RAIN_THRESHOLDS = [0.01, 1]
 # Best data filename
 BD_FILE = '{}/bd_file.csv'.format(SCRATCH_DIR)
 # Columns needed from best date csv file
@@ -142,7 +143,8 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
                   site_dist, site_height, trial_site,
                   thresholds=TEMP_THRESHOLDS)
         make_plot(new_dts, precip_rates, 'mm/hr', 'Precipitation Rate', name,
-                  site_dist, site_height, trial_site)
+                  site_dist, site_height, trial_site,
+                  thresholds=RAIN_THRESHOLDS)
         make_plot(new_dts, wind_means, 'knots', 'Wind means', name, site_dist,
                   site_height, trial_site, thresholds=MEAN_THRESHOLDS)
         make_plot(new_dts, wind_gusts, 'knots', 'Wind gusts', name, site_dist,
@@ -211,6 +213,7 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
                     lns = lns_1
                 else:
                     lns += lns_1
+
         # Create legend
         labs = [ln.get_label() for ln in lns]
         legend = ax.legend(lns, labs, loc='upper right',
@@ -222,21 +225,72 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
 
         # Plot fixed line thresholds
         if param == 'Dry Bulb Temperature':
-            colours = ['r', 'orange', 'r']
-            labels = ['Must not encounter', 'Cautionary', '']
+            colours = ['r', 'g', 'orange', 'r']
+
         else:
             colours = ['g', 'orange', 'r']
-            labels = ['Safe', 'Cautionary', 'Must not encounter']
-        for thresh, colour, label in zip(thresholds, colours, labels):
-            if thresh is not None:
-                xlims = ax.get_xlim()
-                ax.hlines(thresh, ax.get_xlim()[0], ax.get_xlim()[1],
-                          colors=colour, label=label)
-                ax.set_xlim(xlims)
+
+        # Get axes limits for shading plots
+        xlims = ax.get_xlim()
+        ylims = ax.get_ylim()
+
+        # For visibility, lower values worse
+        if param == 'Visibility':
+
+            # Add y-axes limit for most extreme threshold
+            thresholds.append(ylims[0])
+
+            # Shade areas on plot for each threshold (green, amber red)
+            for ind, thresh in enumerate(thresholds):
+
+                # Get horizontal lines to fill between (if within axes limits)
+                if ylims[1] > thresh:
+                    if ind == 0:
+                        y2 = ylims[1]
+                    else:
+                        y2 = thresholds[ind-1]
+                    if ylims[0] < y2:
+                        if thresh > ylims[0]:
+                            y1 = thresh
+                        else:
+                            y1 = ylims[0]
+
+                        # Fill between lines
+                        ax.fill_between(xlims, y1, y2, color=colours[ind],
+                                        alpha=0.25)
+
+        # For other parameters, higher values worse
+        elif param in ['Wind means', 'Wind gusts', 'Relative humidity',
+                       'Dry Bulb Temperature', 'Precipitation Rate']:
+
+            # Add y-axes limit for most extreme threshold
+            thresholds.append(ylims[1])
+
+            # Shade areas on plot for each threshold (green, amber red)
+            for ind, thresh in enumerate(thresholds):
+
+                # Get horizontal lines to fill between (if within axes limits)
+                if ylims[0] < thresh:
+                    if ind == 0:
+                        y1 = ylims[0]
+                    else:
+                        y1 = thresholds[ind-1]
+                    if ylims[1] > y1:
+                        if thresh < ylims[1]:
+                            y2 = thresh
+                        else:
+                            y2 = ylims[1]
+
+                        # Fill between lines
+                        fill = ax.fill_between(xlims, y1, y2,
+                                               color=colours[ind], alpha=0.25)
+
+        # Re-define axis limits
+        ax.set_xlim(xlims)
+        ax.set_ylim(ylims)
 
     # Format plot
     ax.grid(color='grey', axis='x')
-    ax.legend(loc='best')
     ax.set_xticks(xtick_locs)
     ax.set_xticklabels(xlabels, fontsize=8)
     title = (f'{param}. Elevation of site: {int(height)} m. Distance from '
