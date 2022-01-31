@@ -44,7 +44,7 @@ MEAN_THRESHOLDS = [12, 16]
 GUST_THRESHOLDS = [15, 20]
 REL_HUM_THRESHOLDS = [40, 95]
 VIS_THRESHOLDS = [1000, 200]
-RAIN_THRESHOLDS = [0.01, 1]
+RAIN_THRESHOLDS = [0.01, 0.2]
 # Best data filename
 BD_FILE = '{}/bd_file.csv'.format(SCRATCH_DIR)
 # Columns needed from best date csv file
