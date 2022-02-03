@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from datetime import datetime, timedelta
 # Local import
 import useful_functions as uf
@@ -157,13 +158,11 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
                   site_dist, site_height, trial_site,
                   thresholds=VIS_THRESHOLDS)
         make_plot(new_dts, [low_cld, med_cld, high_cld], 'Oktas', 'Cloud',
-                  name, site_dist, site_height, trial_site, multiple=True,
-                  labels=cld_labels)
+                  name, site_dist, site_height, trial_site, labels=cld_labels)
 
 
 def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
-              multiple=False, two_scales=False, labels=[],
-              thresholds=[None, None, None]):
+              labels=[], thresholds=[None, None, None]):
     """
     Creates and saves a line plot.
     """
@@ -188,109 +187,130 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
             xtick_locs.append(ind)
             xlabels.append (date)
 
-    # Plot line(s)
-    if multiple:
+    # Cloud plots use multiple lines
+    if param == 'Cloud':
+
+        # Define colour of lines
         colours = ['r', 'b', 'g']
-        for ind, (value_array, colour, label) in enumerate(zip(values,
-                                                               colours,
+
+        # Loop through each dataset (low, medium, high)
+        for ind, (value_array, colour, label) in enumerate(zip(values, colours,
                                                                labels)):
-            if two_scales and ind == 2:
-                ax2 = ax.twinx()
-                lns_2 = ax2.plot(date_strings, value_array, color=colour,
-                                 label=label)
-                ax2.set_ylabel(y_label[1])
-                # Add to lines for legend
-                lns += lns_2
+
+            # Plot line and set y-axis label
+            lns_1 = ax.plot(date_strings, value_array, color=colour,
+                            label=label)
+            ax.set_ylabel(y_label)
+
+            # Add to lines for legend
+            if ind == 0:
+                lns = lns_1
             else:
-                lns_1 = ax.plot(date_strings, value_array, color=colour,
-                                label=label)
-                if two_scales:
-                    ax.set_ylabel(y_label[0])
-                else:
-                    ax.set_ylabel(y_label)
-                # Add to lines for legend
-                if ind == 0:
-                    lns = lns_1
-                else:
-                    lns += lns_1
+                lns += lns_1
 
         # Create legend
-        labs = [ln.get_label() for ln in lns]
-        legend = ax.legend(lns, labs, loc='upper right',
+        labels = [ln.get_label() for ln in lns]
+        legend = ax.legend(lns, labels, loc='upper right',
                            bbox_to_anchor=(1.2, 1, 0, 0))
 
+    # For all plots other than cloud, just single line plotted
     else:
+
+        # Plot line and set y-axis label
         ax.plot(date_strings, values)
         ax.set_ylabel(y_label)
 
-        # Plot fixed line thresholds
-        if param == 'Dry Bulb Temperature':
-            colours = ['r', 'g', 'orange', 'r']
+        # For all other plots except wind direction, shade between thresholds
+        if param != 'Wind directions':
 
-        else:
-            colours = ['g', 'orange', 'r']
+            # Define colours for shading
+            if param == 'Dry Bulb Temperature':
+                colours = ['r', 'g', 'orange', 'r']
+            else:
+                colours = ['g', 'orange', 'r']
 
-        # Get axes limits for shading plots
-        xlims = ax.get_xlim()
-        ylims = ax.get_ylim()
+            # Get axes limits
+            xlims = ax.get_xlim()
+            ylims = ax.get_ylim()
 
-        # For visibility, lower values worse
-        if param == 'Visibility':
+            # For visibility, lower values worse
+            if param == 'Visibility':
 
-            # Add y-axes limit for most extreme threshold
-            thresholds.append(ylims[0])
+                # Add y-axes limit to thresholds
+                thresholds.append(ylims[0])
 
-            # Shade areas on plot for each threshold (green, amber red)
-            for ind, thresh in enumerate(thresholds):
+                # Shade areas on plot between each threshold
+                for ind, thresh in enumerate(thresholds):
 
-                # Get horizontal lines to fill between (if within axes limits)
-                if ylims[1] > thresh:
-                    if ind == 0:
-                        y2 = ylims[1]
-                    else:
-                        y2 = thresholds[ind-1]
-                    if ylims[0] < y2:
-                        if thresh > ylims[0]:
-                            y1 = thresh
-                        else:
-                            y1 = ylims[0]
-
-                        # Fill between lines
-                        ax.fill_between(xlims, y1, y2, color=colours[ind],
-                                        alpha=0.25)
-
-        # For other parameters, higher values worse
-        elif param in ['Wind means', 'Wind gusts', 'Relative humidity',
-                       'Dry Bulb Temperature', 'Precipitation Rate']:
-
-            # Add y-axes limit for most extreme threshold
-            thresholds.append(ylims[1])
-
-            # Shade areas on plot for each threshold (green, amber red)
-            for ind, thresh in enumerate(thresholds):
-
-                # Get horizontal lines to fill between (if within axes limits)
-                if ylims[0] < thresh:
-                    if ind == 0:
-                        y1 = ylims[0]
-                    else:
-                        y1 = thresholds[ind-1]
-                    if ylims[1] > y1:
-                        if thresh < ylims[1]:
-                            y2 = thresh
-                        else:
+                    # Get horizontal lines to fill between (if within limits)
+                    if ylims[1] > thresh:
+                        if ind == 0:
                             y2 = ylims[1]
+                        else:
+                            y2 = thresholds[ind-1]
+                        if ylims[0] < y2:
+                            if thresh > ylims[0]:
+                                y1 = thresh
+                            else:
+                                y1 = ylims[0]
 
-                        # Fill between lines
-                        fill = ax.fill_between(xlims, y1, y2,
-                                               color=colours[ind], alpha=0.25)
+                            # Fill between lines
+                            ax.fill_between(xlims, y1, y2, color=colours[ind],
+                                            alpha=0.25)
 
-        # Re-define axis limits
-        ax.set_xlim(xlims)
-        ax.set_ylim(ylims)
+            # For other parameters, higher values worse
+            else:
+                print('param', param)
+                # Add y-axes limit to thresholds
+                thresholds.append(ylims[1])
+
+                # Shade areas on plot between each threshold
+                for ind, thresh in enumerate(thresholds):
+
+                    # Get horizontal lines to fill between (if within limits)
+                    if ylims[0] < thresh:
+                        if ind == 0:
+                            y1 = ylims[0]
+                        else:
+                            y1 = thresholds[ind-1]
+                        if ylims[1] > y1:
+                            if thresh < ylims[1]:
+                                y2 = thresh
+                            else:
+                                y2 = ylims[1]
+
+                            # Fill between lines
+                            ax.fill_between(xlims, y1, y2, color=colours[ind],
+                                            alpha=0.25)
+
+            # Re-define axis limits
+            ax.set_xlim(xlims)
+            ax.set_ylim(ylims)
+
+            # Create patch for each colour
+            if param == 'Visibility':
+                green_label = f'> {thresholds[0]} {y_label}'
+                amber_label = f'{thresholds[1]} - {thresholds[0]} {y_label}'
+                red_label = f'< {thresholds[1]} {y_label}'
+            elif param == 'Dry Bulb Temperature':
+                green_label = f'{thresholds[0]} - {thresholds[1]} {y_label}'
+                amber_label = f'{thresholds[1]} - {thresholds[2]} {y_label}'
+                red_label = f'< {thresholds[0]} or > {thresholds[2]} {y_label}'
+            else:
+                green_label = f'< {thresholds[0]} {y_label}'
+                amber_label = f'{thresholds[0]} - {thresholds[1]} {y_label}'
+                red_label = f'> {thresholds[1]} {y_label}'
+
+            # Handles for legend
+            handles = [mpatches.Patch(color='g', label=green_label),
+                       mpatches.Patch(color='orange', label=amber_label),
+                       mpatches.Patch(color='r', label=red_label)]
+
+            # Create legend
+            ax.legend(handles=handles)
 
     # Format plot
-    ax.grid(color='grey', axis='x')
+    ax.grid(color='grey', axis='both', alpha=0.5)
     ax.set_xticks(xtick_locs)
     ax.set_xticklabels(xlabels, fontsize=8)
     title = (f'{param}. Elevation of site: {int(height)} m. Distance from '
