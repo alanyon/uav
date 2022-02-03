@@ -260,7 +260,7 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
 
             # For other parameters, higher values worse
             else:
-                print('param', param)
+
                 # Add y-axes limit to thresholds
                 thresholds.append(ylims[1])
 
