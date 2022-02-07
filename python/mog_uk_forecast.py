@@ -806,7 +806,7 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     """
     # Define parameter-specific variables
     if param == 'wind':
-        thresholds = WIND_THRESHS
+        thresholds = WIND_THRESHS_KTS
         alt_threshs = WIND_THRESHS_KTS
         units = 'knots'
         temp_thresh = False
