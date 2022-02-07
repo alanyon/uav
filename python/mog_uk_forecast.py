@@ -46,7 +46,7 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Change these bits for new trial site/date
 # Dates of start and end of trial
 FIRST_DTS = [datetime(2022, 2, 14, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 2, 14, 4)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 2, 16, 1)]  # Year, month, day, hour
 # Location/height/name of site
 LATS = [53.145556]
 LONS = [-0.991389]
@@ -59,7 +59,7 @@ FNAME_NUMS = [str(num).zfill(3) for num in range(0, 126, 3)]
 # For converting mph to knots
 MPH_TO_KTS = 0.86897423357831
 # Threshold lists (wind thresholds need to be in knots as well as mph)
-WIND_THRESHS_KTS = [12, 15, 20]
+WIND_THRESHS_KTS = [12, 15, 20, 25]
 TEMP_THRESHS = [0, 20, 25, 30]
 REL_HUM_THRESHS = [40, 95]
 RAIN_THRESHS = [0.2, 1., 4.]
