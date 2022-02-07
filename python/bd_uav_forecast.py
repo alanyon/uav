@@ -208,6 +208,9 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
             else:
                 lns += lns_1
 
+        # Set y limits
+        ax.set_ylim(0, 8)
+
         # Create legend
         labels = [ln.get_label() for ln in lns]
         legend = ax.legend(lns, labels, loc='upper right',

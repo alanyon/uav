@@ -1121,16 +1121,14 @@ if __name__ == "__main__":
               'script')
         exit()
 
-    main(new_data, 'xcfl01')
-
-    # # If code fails, try changing HPC hall
-    # try:
-    #     main(new_data, 'xcfl01')
-    #     print('xcfl hall used')
-    # except Exception:
-    #     print('Changing hall')
-    #     main(new_data, 'xcel01')
-    #     print('xcel hall used')
+    # If code fails, try changing HPC hall
+    try:
+        main(new_data, 'xcfl01')
+        print('xcfl hall used')
+    except Exception:
+        print('Changing hall')
+        main(new_data, 'xcel01')
+        print('xcel hall used')
 
     # Print time
     time_2 = uf.print_time('Finished')
