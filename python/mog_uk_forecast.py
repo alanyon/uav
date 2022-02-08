@@ -45,8 +45,8 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DTS = [datetime(2022, 2, 14, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 2, 16, 1)]  # Year, month, day, hour
+FIRST_DTS = [datetime(2022, 2, 10, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 2, 10, 6)]  # Year, month, day, hour
 # Location/height/name of site
 LATS = [53.145556]
 LONS = [-0.991389]
@@ -1121,15 +1121,15 @@ if __name__ == "__main__":
               'script')
         exit()
 
-    main(new_data, 'xcel01')
+    main(new_data, 'xcfl01')
 
     # # If code fails, try changing HPC hall
     # try:
-    #     main(new_data, 'xcel01')
-    #     print('xcel hall used')
+    #     main(new_data, 'xcfl01')
+    #     print('xcfl hall used')
     # except Exception:
     #     print('Changing hall')
-    #     main(new_data, 'xcfl01')
+    #     main(new_data, 'xcel01')
     #     print('xcel hall used')
 
     # Print time
