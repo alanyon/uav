@@ -45,8 +45,8 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DTS = [datetime(2022, 2, 10, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 2, 10, 6)]  # Year, month, day, hour
+FIRST_DTS = [datetime(2022, 2, 14, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 2, 16, 1)]  # Year, month, day, hour
 # Location/height/name of site
 LATS = [53.145556]
 LONS = [-0.991389]
@@ -59,7 +59,7 @@ FNAME_NUMS = [str(num).zfill(3) for num in range(0, 126, 3)]
 # For converting mph to knots
 MPH_TO_KTS = 0.86897423357831
 # Threshold lists (wind thresholds need to be in knots as well as mph)
-WIND_THRESHS_KTS = [12, 15, 20, 25]
+WIND_THRESHS = [12, 15, 20, 25]
 TEMP_THRESHS = [0, 20, 25, 30]
 REL_HUM_THRESHS = [40, 95]
 RAIN_THRESHS = [0.2, 1., 4.]
@@ -308,6 +308,7 @@ def update_cube(cube, sample_pnts, orog_cube, start_vdt, end_vdt, c_units):
     if c_units:
         cube.convert_units(c_units)
 
+
     # Convert altitude units from metres to feet
     cube.coord('altitude').convert_units('feet')
     cube.coord('level_height').convert_units('feet')
@@ -362,8 +363,7 @@ def calc_probs(cube, threshold, temp_thresh):
     return probs_cube
 
 
-def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units,
-           site_fname):
+def x_plot(cube, issue_dt, param, threshold, temp_thresh, units, site_fname):
     """
     Makes cross section plot over time.
     """
@@ -406,8 +406,6 @@ def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units,
             label_type = 'exceeding'
     else:
         label_type = 'exceeding'
-        if param == 'wind':
-            alt_thresh = '{:.2f}'.format(alt_thresh)
 
     # Add colour bar
     plt.subplots_adjust(bottom=0.23)
@@ -418,7 +416,7 @@ def x_plot(cube, issue_dt, param, threshold, alt_thresh, temp_thresh, units,
     cbar_probs.set_ticklabels(['{}%'.format(perc) for perc in levels])
     cbar_probs.ax.tick_params(labelsize=10)
     cbar_probs.set_label(f'Probability of {param_str} {label_type} '
-                         f'{alt_thresh} {units}', fontsize=12)
+                         f'{threshold} {units}', fontsize=12)
 
     # Figure title
     fig.suptitle(f'MOGREPS-UK {param_str} probabilities - cross-section over '
@@ -643,11 +641,11 @@ def update_html(date, site_height, site_name, site_fname):
         lines[34] = lines[34].replace('TRIAL', site_fname)
         lines[48] = lines[48].replace('NAME', site_name)
         lines[48] = lines[48].replace('HEIGHT', str(site_height))
-        lines[77] = lines[77].replace('DATE', date)
-        lines[78] = lines[78].replace('TRIAL', site_fname)
-        lines[80] = lines[80].replace('NAME', site_name)
-        lines[89] = lines[89].replace('TRIAL', site_fname)
-        lines[89] = lines[89].replace('DATE', date)
+        lines[76] = lines[76].replace('DATE', date)
+        lines[77] = lines[77].replace('TRIAL', site_fname)
+        lines[79] = lines[79].replace('NAME', site_name)
+        lines[88] = lines[88].replace('TRIAL', site_fname)
+        lines[88] = lines[88].replace('DATE', date)
 
         # Assign to new_lines
         new_lines = lines
@@ -806,18 +804,15 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     """
     # Define parameter-specific variables
     if param == 'wind':
-        thresholds = WIND_THRESHS_KTS
-        alt_threshs = WIND_THRESHS_KTS
+        thresholds = WIND_THRESHS
         units = 'knots'
         temp_thresh = False
     elif param == 'relative_humidity':
         thresholds = REL_HUM_THRESHS
-        alt_threshs = REL_HUM_THRESHS
         units = '%'
         temp_thresh = False
     else:
         thresholds = TEMP_THRESHS
-        alt_threshs = TEMP_THRESHS
         units = 'Celsius'
         temp_thresh = True
 
@@ -846,7 +841,7 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
 
         # Convert to probabilities for each threshold
         prob_cubes = [calc_probs(hour_cube, thresh, temp_thresh)
-                      for thresh in alt_threshs]
+                      for thresh in thresholds]
 
         # Append probability cubes to cube lists
         [prob_list.append(prob_cube)
@@ -856,10 +851,8 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make cross section plots
-    [x_plot(probs_cube, m_date, param, thresh, alt_thresh, temp_thresh, units,
-            site_fname)
-     for probs_cube, thresh, alt_thresh in zip(merged_probs, thresholds,
-                                               alt_threshs)]
+    [x_plot(probs_cube, m_date, param, thresh, temp_thresh, units, site_fname)
+     for probs_cube, thresh in zip(merged_probs, thresholds)]
 
 
 def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
@@ -904,16 +897,16 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
 
                 # Get wind speed cube
                 try:
-                    wind_spd = get_wind_spd(scratch_m, orog_cube, lat, lon,
-                                            start_vdt, end_vdt)
+                    wind_spd = get_wind_spd(scratch_m, orog_cube, rot_lat,
+                                            rot_lon, start_vdt, end_vdt)
                     wind_cubes.append(wind_spd)
                 except:
-                    print('Wind speed failed')
+                    print('Winds failed')
 
                 # Get temperature cube
                 try:
-                    temps = get_temps(scratch_s, scratch_m, orog_cube, lat,
-                                      lon, start_vdt, end_vdt)
+                    temps = get_temps(scratch_s, scratch_m, orog_cube, rot_lat,
+                                      rot_lon, start_vdt, end_vdt)
                     temp_cubes.append(temps)
                 except:
                     print('Temps failed')
@@ -921,14 +914,15 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 # Get relative humidity cube
                 try:
                     rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
-                                            lat, lon, start_vdt, end_vdt)
+                                            rot_lat, rot_lon, start_vdt,
+                                            end_vdt)
                     rel_hum_cubes.append(rel_hums)
                 except:
                     print('Humidity failed')
 
                 # Get precip cube
                 try:
-                    rains = get_rains(scratch_s, orog_cube, lat, lon,
+                    rains = get_rains(scratch_s, orog_cube, rot_lat, rot_lon,
                                       start_vdt, end_vdt + timedelta(hours=1))
                     rain_cubes.append(rains)
                 except:
@@ -936,8 +930,8 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
 
                 # Get visibility cube
                 try:
-                    vis = get_vis(scratch_s, orog_cube, lat, lon, start_vdt,
-                                  end_vdt)
+                    vis = get_vis(scratch_s, orog_cube, rot_lat, rot_lon,
+                                  start_vdt, end_vdt)
                     vis_cubes.append(vis)
                 except:
                     print('Vis failed')
@@ -1006,7 +1000,7 @@ def main(new_data, hall):
         if not os.path.exists(img_dir):
             os.system(f'mkdir {img_dir}')
 
-        # Calculate period of forecast from first and ast dts
+        # Calculate period of forecast from first and last dts
         fcast_period = int((last_dt - first_dt).total_seconds() / 3600) - 1
 
         # Time now (only to hour)
@@ -1121,16 +1115,14 @@ if __name__ == "__main__":
               'script')
         exit()
 
-    main(new_data, 'xcfl01')
-
-    # # If code fails, try changing HPC hall
-    # try:
-    #     main(new_data, 'xcfl01')
-    #     print('xcfl hall used')
-    # except Exception:
-    #     print('Changing hall')
-    #     main(new_data, 'xcel01')
-    #     print('xcel hall used')
+    # If code fails, try changing HPC hall
+    try:
+        main(new_data, 'xcfl01')
+        print('xcfl hall used')
+    except Exception:
+        print('Changing hall')
+        main(new_data, 'xcel01')
+        print('xcel hall used')
 
     # Print time
     time_2 = uf.print_time('Finished')
