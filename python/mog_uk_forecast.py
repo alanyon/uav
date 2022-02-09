@@ -592,7 +592,7 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units,
     # Define x axis ticks and labels
     xtick_locs, xlabels = [], []
     for ind, date in enumerate(dates):
-        if gap == 0 or ind % gap == 0:
+        if gap == 0 or ind % gap == 0 or date == dates[-1]:
             xtick_locs.append(ind)
             xlabels.append (date)
 
@@ -603,7 +603,7 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units,
     ax.set_ylim(0, 100)
     ax.set_ylabel('Probability (%)', fontsize=17)
     ax.set_xticks(xtick_locs)
-    ax.set_xticklabels(xlabels, fontsize=14)
+    ax.set_xticklabels(xlabels, fontsize=12)
 
     # Figure title
     fig.suptitle(f'MOGREPS-UK probabilities of {title_str} {threshold}{units}',
