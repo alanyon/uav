@@ -642,7 +642,7 @@ def update_html(date, site_height, site_name, site_fname):
         lines[48] = lines[48].replace('NAME', site_name)
         lines[48] = lines[48].replace('HEIGHT', str(site_height))
         lines[76] = lines[76].replace('DATE', date)
-        lines[77] = lines[77].replace('TRIAL', site_fname)
+        lines[79] = lines[79].replace('TRIAL', site_fname)
         lines[79] = lines[79].replace('NAME', site_name)
         lines[88] = lines[88].replace('TRIAL', site_fname)
         lines[88] = lines[88].replace('DATE', date)
