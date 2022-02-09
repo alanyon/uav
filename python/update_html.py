@@ -8,7 +8,7 @@ URL_START = 'https://www-nwp/~avapps/uav/html'
 SIDEBAR = '/home/h05/avapps/public_html/uav/sidebar.shtml'
 
 
-def update_html(date, site_height, site_name, site_fname):
+def main(date, site_height, site_name, site_fname):
     """
     Updates html file.
     """
@@ -84,3 +84,7 @@ def update_html(date, site_height, site_name, site_fname):
     for line in new_lines:
         file.write(line)
     file.close()
+
+
+if __name__ == "__main__":
+    main('2022020909Z', 77, 'National Grid', 'National_Grid'):
