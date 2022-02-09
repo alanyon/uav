@@ -675,15 +675,14 @@ def update_html(date, site_height, site_name, site_fname):
         file = open(html_fname, 'r')
         lines = file.readlines()
         file.close()
-        first_lines = lines[:-22]
-        last_lines = lines[-22:]
+        first_lines = lines[:-19]
+        last_lines = lines[-19:]
 
         # Edit html file and append/edit the required lines
         first_lines[-1] = first_lines[-1].replace(' selected="selected"', '')
         first_lines.append('                        <option selected='
                            f'"selected" value="{date}">{date}</option>\n')
-        last_lines[-11] = last_lines[-11].replace(last_lines[-11][-82:-71],
-                                                  date)
+        last_lines[-8] = last_lines[-8].replace(last_lines[-8][-82:-71], date)
 
         # Concatenate the lists together
         new_lines = first_lines + last_lines
