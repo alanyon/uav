@@ -87,4 +87,4 @@ def main(date, site_height, site_name, site_fname):
 
 
 if __name__ == "__main__":
-    main('2022020909Z', 77, 'National Grid', 'National_Grid'):
+    main('2022020909Z', 77, 'National Grid', 'National_Grid')
