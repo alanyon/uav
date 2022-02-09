@@ -66,8 +66,8 @@ def main(date, site_height, site_name, site_fname):
         file = open(html_fname, 'r')
         lines = file.readlines()
         file.close()
-        first_lines = lines[:-22]
-        last_lines = lines[-22:]
+        first_lines = lines[:-20]
+        last_lines = lines[-20:]
 
         # Edit html file and append/edit the required lines
         first_lines[-1] = first_lines[-1].replace(' selected="selected"', '')
