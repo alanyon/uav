@@ -28,12 +28,12 @@ MPH_TO_KTS = 0.86897423357831
 
 # ==============================================================================
 # Change these bits for new trial site/date
-TRIAL_SITES = ['National Grid']
-SITE_LATS = [53.145556]
-SITE_LONS = [-0.991389]
-TRIAL_HEIGHTS = [77]  # metres
-FIRST_DTS = [datetime(2022, 2, 14, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 2, 19, 1)]  # Year, month, day, hour
+TRIAL_SITES = ['National Rail', 'National Grid']
+SITE_LATS = [53.225556, 53.145556]
+SITE_LONS = [-0.881389, -0.991389]
+TRIAL_HEIGHTS = [43, 77]  # metres
+FIRST_DTS = [datetime(2022, 3, 23, 0), datetime(2022, 3, 22, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 3, 26, 1), datetime(2022, 3, 25, 1)]  # Year, month, day, hour
 # ==============================================================================
 
 # Shouldn't have to change any of the following but can if necessary
