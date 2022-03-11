@@ -43,15 +43,26 @@ RAIN_CON = iris.AttributeConstraint(STASH='m01s04i203')
 VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 
 # ==============================================================================
+# # Change these bits for new trial site/date
+# # Dates of start and end of trial
+# FIRST_DTS = [datetime(2022, 3, 13, 0), datetime(2022, 3, 12, 0)]  # Year, month, day, hour
+# LAST_DTS = [datetime(2022, 3, 13, 6), datetime(2022, 3, 12, 6)]  # Year, month, day, hour
+# # Location/height/name of site
+# LATS = [53.225556, 53.145556]
+# LONS = [-0.881389, -0.991389]
+# SITE_HEIGHTS = [43, 77]
+# SITE_NAMES = ['National Rail', 'National Grid']
+# ==============================================================================
+# ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DTS = [datetime(2022, 2, 14, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 2, 16, 1)]  # Year, month, day, hour
+FIRST_DTS = [datetime(2022, 3, 13, 0), datetime(2022, 3, 12, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 3, 13, 6), datetime(2022, 3, 12, 6)]  # Year, month, day, hour
 # Location/height/name of site
-LATS = [53.145556]
-LONS = [-0.991389]
-SITE_HEIGHTS = [77]
-SITE_NAMES = ['National Grid']
+LATS = [53.145556, 53.225556]
+LONS = [-0.991389, -0.881389]
+SITE_HEIGHTS = [77, 43]
+SITE_NAMES = ['National Grid', 'National Rail']
 # ==============================================================================
 
 # Lead time numbers used in filenames
@@ -821,6 +832,12 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     # Number of 1 hour forecast periods
     num_fps = int((end_vdt - start_vdt).total_seconds() / 3600)
 
+    print('param', param)
+    print('start end', start_vdt, end_vdt)
+    print('m_date', m_date)
+    print('cube_list', cube_list)
+    print('site_fname', site_fname)
+
     # Get all forecasts valid for each hour in forecast period
     for vdt in rrule(HOURLY, dtstart=start_vdt, interval=1, count=num_fps):
 
@@ -829,11 +846,14 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
 
         # Find forecasts valid for hour and append to cube list
         for cube in cube_list:
+            print('cube', cube)
             for time_cube in cube.slices_over("time"):
                 time_int = time_cube.coord('time').points[0]
+                print('cube_time', cube.coord('time').units.num2date(time_int))
+                print('vdt', vdt)
                 if cube.coord('time').units.num2date(time_int) == vdt:
                     hour_cube_list.append(time_cube)
-
+        print('hour_cube_list', hour_cube_list)
         # Merge into single cube
         hour_cubes = hour_cube_list.merge(unique=False)
         hour_cube = hour_cubes[0]
@@ -1114,14 +1134,16 @@ if __name__ == "__main__":
               'script')
         exit()
 
-    # If code fails, try changing HPC hall
-    try:
-        main(new_data, 'xcfl01')
-        print('xcfl hall used')
-    except Exception:
-        print('Changing hall')
-        main(new_data, 'xcel01')
-        print('xcel hall used')
+    main(new_data, 'xcfl01')
+
+    # # If code fails, try changing HPC hall
+    # try:
+    #     main(new_data, 'xcfl01')
+    #     print('xcfl hall used')
+    # except Exception:
+    #     print('Changing hall')
+    #     main(new_data, 'xcel01')
+    #     print('xcel hall used')
 
     # Print time
     time_2 = uf.print_time('Finished')

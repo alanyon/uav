@@ -142,21 +142,22 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
         # Make some plots (threholds in mph)
         make_plot(new_dts, temps, 'deg C', 'Dry Bulb Temperature', name,
                   site_dist, site_height, trial_site,
-                  thresholds=TEMP_THRESHOLDS)
+                  thresholds=TEMP_THRESHOLDS.copy())
         make_plot(new_dts, precip_rates, 'mm/hr', 'Precipitation Rate', name,
                   site_dist, site_height, trial_site,
                   thresholds=RAIN_THRESHOLDS)
         make_plot(new_dts, wind_means, 'knots', 'Wind means', name, site_dist,
-                  site_height, trial_site, thresholds=MEAN_THRESHOLDS)
+                  site_height, trial_site, thresholds=MEAN_THRESHOLDS.copy())
         make_plot(new_dts, wind_gusts, 'knots', 'Wind gusts', name, site_dist,
-                  site_height, trial_site, thresholds=GUST_THRESHOLDS)
+                  site_height, trial_site, thresholds=GUST_THRESHOLDS.copy())
         make_plot(new_dts, wind_dirs, 'degrees', 'Wind directions', name,
                   site_dist, site_height, trial_site)
         make_plot(new_dts, rel_hum, '%', 'Relative humidity', name, site_dist,
-                  site_height, trial_site, thresholds=REL_HUM_THRESHOLDS)
+                  site_height, trial_site,
+                  thresholds=REL_HUM_THRESHOLDS.copy())
         make_plot(new_dts, visibilities, 'metres', 'Visibility', name,
                   site_dist, site_height, trial_site,
-                  thresholds=VIS_THRESHOLDS)
+                  thresholds=VIS_THRESHOLDS.copy())
         make_plot(new_dts, [low_cld, med_cld, high_cld], 'Oktas', 'Cloud',
                   name, site_dist, site_height, trial_site, labels=cld_labels)
 
@@ -263,7 +264,6 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
 
             # For other parameters, higher values worse
             else:
-
                 # Add y-axes limit to thresholds
                 thresholds.append(ylims[1])
 
