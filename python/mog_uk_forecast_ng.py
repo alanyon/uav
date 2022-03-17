@@ -46,7 +46,7 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Change these bits for new trial site/date
 # Dates of start and end of trial
 FIRST_DTS = [datetime(2022, 3, 24, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 3, 25, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 3, 26, 0)]  # Year, month, day, hour
 # Location/height/name of site
 LATS = [53.145556]
 LONS = [-0.991389]
