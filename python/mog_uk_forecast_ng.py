@@ -43,26 +43,15 @@ RAIN_CON = iris.AttributeConstraint(STASH='m01s04i203')
 VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 
 # ==============================================================================
-# # Change these bits for new trial site/date
-# # Dates of start and end of trial
-# FIRST_DTS = [datetime(2022, 3, 13, 0), datetime(2022, 3, 12, 0)]  # Year, month, day, hour
-# LAST_DTS = [datetime(2022, 3, 13, 6), datetime(2022, 3, 12, 6)]  # Year, month, day, hour
-# # Location/height/name of site
-# LATS = [53.225556, 53.145556]
-# LONS = [-0.881389, -0.991389]
-# SITE_HEIGHTS = [43, 77]
-# SITE_NAMES = ['National Rail', 'National Grid']
-# ==============================================================================
-# ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DTS = [datetime(2022, 3, 18, 0), datetime(2022, 3, 18, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 3, 18, 4), datetime(2022, 3, 18, 4)]  # Year, month, day, hour
+FIRST_DTS = [datetime(2022, 3, 24, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 3, 27, 0)]  # Year, month, day, hour
 # Location/height/name of site
-LATS = [53.145556, 53.225556]
-LONS = [-0.991389, -0.881389]
-SITE_HEIGHTS = [77, 43]
-SITE_NAMES = ['National Grid', 'National Rail']
+LATS = [53.145556]
+LONS = [-0.991389]
+SITE_HEIGHTS = [77]
+SITE_NAMES = ['National Grid']
 # ==============================================================================
 
 # Lead time numbers used in filenames

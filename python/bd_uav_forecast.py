@@ -32,8 +32,8 @@ TRIAL_SITES = ['National Rail', 'National Grid']
 SITE_LATS = [53.225556, 53.145556]
 SITE_LONS = [-0.881389, -0.991389]
 TRIAL_HEIGHTS = [43, 77]  # metres
-FIRST_DTS = [datetime(2022, 3, 23, 0), datetime(2022, 3, 22, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 3, 26, 1), datetime(2022, 3, 25, 1)]  # Year, month, day, hour
+FIRST_DTS = [datetime(2022, 3, 23, 0), datetime(2022, 3, 24, 0)]  # Year, month, day, hour
+LAST_DTS = [datetime(2022, 3, 26, 1), datetime(2022, 3, 27, 1)]  # Year, month, day, hour
 # ==============================================================================
 
 # Shouldn't have to change any of the following but can if necessary
@@ -72,15 +72,10 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
     some plots.
     """
     # Copy files on HPC to scratch directory, removing previously used file
-    hpc_bd_file = (f'{USER}@xcel01:{BEST_DATA_DIR}/{START_DATE}T{START_TIME}'
-                   f'00Z/bd_main/SSPA_BEST_FCS_HOURLY_{START_DATE_TIME}_*.csv')
+    hpc_bd_file = (f'{USER}@xcel01:{BEST_DATA_DIR}/hourly.fc')
+
     os.system(f'rm {BD_FILE}')
     os.system(f'scp {hpc_bd_file} {BD_FILE}')
-
-    # If no file found, try changing HPC hall
-    if not os.path.exists(BD_FILE):
-        hpc_bd_file = hpc_bd_file.replace('xcel', 'xcfl')
-        os.system(f'scp {hpc_bd_file} {BD_FILE}')
 
     # Make directories for web page if using new trial site
     trl_img_dir = f'{HTML_DIR}/images/{trial_site.replace(" ", "_")}'
@@ -91,7 +86,7 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
     pd.set_option('display.max_columns', 50)
 
     # For changing date formats
-    dateparse = lambda x: datetime.strptime(x, '%d-%m-%Y%H:%M')
+    dateparse = lambda x: datetime.strptime(x, '%d-%m-%Y %H:%M')
 
     # Create dataframe from csv file data
     bd_df = pd.read_csv(BD_FILE,
