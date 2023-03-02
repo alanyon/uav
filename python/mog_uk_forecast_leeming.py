@@ -46,8 +46,8 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Change these bits for new trial site/date
 # Dates of start and end of trial
 FIRST_DTS = [datetime.utcnow().replace(minute=0, hour=0, second=0, 
-                                       microsecond=0) + timedelta(hours=3)]
-LAST_DTS = [fdt + timedelta(hours=6) for fdt in FIRST_DTS]
+                                       microsecond=0)]
+LAST_DTS = [fdt + timedelta(hours=3) for fdt in FIRST_DTS]
 # Location/height/name of site
 LATS = [54.2925]
 LONS = [-1.535556]
@@ -496,6 +496,7 @@ def rain_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
 
     # Convert to probabilities for each threshold for each hour cube
     for vdt in hour_cubes:
+        print(hour_cubes[vdt])
 
         # Merge cube
         hour_cube = hour_cubes[vdt].merge_cube()
