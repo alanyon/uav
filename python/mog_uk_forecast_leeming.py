@@ -47,7 +47,7 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Dates of start and end of trial
 FIRST_DTS = [datetime.utcnow().replace(minute=0, hour=0, second=0, 
                                        microsecond=0)]
-LAST_DTS = [FIRST_DTS + timedelta(hours=49)]
+LAST_DTS = [fdt + timedelta(hours=49) for fdt in FIRST_DTS]
 # Location/height/name of site
 LATS = [54.2925]
 LONS = [-1.535556]
