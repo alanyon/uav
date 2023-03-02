@@ -7,20 +7,15 @@ from datetime import datetime, timedelta
 # Local import
 import useful_functions as uf
 
-# Import environment variables
-try:
-    USER = os.environ['USER']
-    BEST_DATA_DIR = os.environ['BEST_DATA_DIR']
-    SCRATCH_DIR = os.environ['SCRATCH_DIR']
-    HTML_DIR = os.environ['HTML_DIR']
-    DATA_FILE = os.environ['DATA_FILE']
-    START_DATE_TIME = os.environ['START_DATE_TIME']
-    START_DATE = os.environ['START_DATE']
-    START_TIME = os.environ['START_TIME']
-    URL_START = os.environ['URL_START']
-    SIDEBAR = os.environ['SIDEBAR']
-except KeyError as err:
-    raise IOError('Environment variable {} not set.'.format(str(err)))
+SCRATCH_DIR = '/scratch/alanyon/uav/test'
+HTML_DIR = '/home/h04/alanyon/public_html/uav'
+DATA_FILE = '/data/users/alanyon/uav/Best_Data_sites.nml'
+BDT = datetime.utcnow() - timedelta(hours=1)
+START_DATE_TIME = BDT.strftime('%Y%m%d%H')
+START_DATE = BDT.strftime('%Y%m%d')
+START_TIME = BDT.strftime('%H')
+URL_START = 'https://www-nwp/~alanyon/uav/html'
+SIDEBAR = '/home/h04/alanyon/public_html/sidebar.shtml'
 
 # For converting from m/s to mph and mph to knots
 MS_TO_KTS = 1.94384
@@ -28,11 +23,11 @@ MPH_TO_KTS = 0.86897423357831
 
 # ==============================================================================
 # Change these bits for new trial site/date
-TRIAL_SITES = ['Morton-in-Marsh']
-SITE_LATS = [51.9975]
-SITE_LONS = [-1.682611]
-TRIAL_HEIGHTS = [132]  # metres
-FIRST_DTS = [datetime(2022, 5, 4, 0)]  # Year, month, day, hour
+TRIAL_SITES = ['National Rail']
+SITE_LATS = [53.225556]
+SITE_LONS = [-0.881389]
+TRIAL_HEIGHTS = [43]  # metres
+FIRST_DTS = [datetime(2022, 5, 2, 0)]  # Year, month, day, hour
 LAST_DTS = [datetime(2022, 5, 5, 1)]  # Year, month, day, hour
 # ==============================================================================
 
@@ -47,7 +42,7 @@ REL_HUM_THRESHOLDS = [40, 95]
 VIS_THRESHOLDS = [1000, 200]
 RAIN_THRESHOLDS = [0.01, 0.2]
 # Best data filename
-BD_FILE = '{}/bd_file.csv'.format(SCRATCH_DIR)
+BD_FILE = 'bd_file.csv'
 # Columns needed from best date csv file
 USE_COLS = ['site', 'forecast_time', 'dry_bulb_temp', 'wind_speed',
             'wind_gust', 'wind_direction', 'visibility', 'sig_wx', 'low_cld',
@@ -71,11 +66,11 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
     Reads Best Data csv file, filters data into Pandas dataframes and creates
     some plots.
     """
-    # Copy files on HPC to scratch directory, removing previously used file
-    hpc_bd_file = (f'{USER}@xcel01:{BEST_DATA_DIR}/hourly.fc')
-
-    os.system(f'rm {BD_FILE}')
-    os.system(f'scp {hpc_bd_file} {BD_FILE}')
+    # # Copy files on HPC to scratch directory, removing previously used file
+    # hpc_bd_file = (f'{USER}@xcel01:{BEST_DATA_DIR}/hourly.fc')
+    #
+    # os.system(f'rm {BD_FILE}')
+    # os.system(f'scp {hpc_bd_file} {BD_FILE}')
 
     # Make directories for web page if using new trial site
     trl_img_dir = f'{HTML_DIR}/images/{trial_site.replace(" ", "_")}'
@@ -86,7 +81,7 @@ def get_bd_df(bd_sites, trial_site, first_dt, last_dt):
     pd.set_option('display.max_columns', 50)
 
     # For changing date formats
-    dateparse = lambda x: datetime.strptime(x, '%d-%m-%Y %H:%M')
+    dateparse = lambda x: datetime.strptime(x, '%d-%m-%Y%H:%M')
 
     # Create dataframe from csv file data
     bd_df = pd.read_csv(BD_FILE,
@@ -260,6 +255,7 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
             # For other parameters, higher values worse
             else:
                 # Add y-axes limit to thresholds
+
                 thresholds.append(ylims[1])
 
                 # Shade areas on plot between each threshold
@@ -276,7 +272,8 @@ def make_plot(dts, values, y_label, param, name, dist, height, trial_site,
                                 y2 = thresh
                             else:
                                 y2 = ylims[1]
-
+                            print('colours', colours)
+                            print('thresholds', thresholds)
                             # Fill between lines
                             ax.fill_between(xlims, y1, y2, color=colours[ind],
                                             alpha=0.25)

@@ -49,10 +49,10 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 FIRST_DT = datetime(2022, 5, 2, 0)  # Year, month, day, hour
 LAST_DT = datetime(2022, 5, 3, 1)  # Year, month, day, hour
 # Location/height/name of site
-LATS = 53.225556
-LONS = -0.881389
-SITE_HEIGHTS = 43
-SITE_NAMES = 'National Rail'
+LAT = 53.225556
+LON = -0.881389
+SITE_HEIGHT = 43
+SITE_NAME = 'National Rail'
 # ==============================================================================
 
 # Image directory

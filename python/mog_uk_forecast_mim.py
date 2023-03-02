@@ -46,13 +46,13 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DT = datetime(2022, 5, 3, 0)  # Year, month, day, hour
+FIRST_DT = datetime(2022, 5, 4, 0)  # Year, month, day, hour
 LAST_DT = datetime(2022, 5, 5, 1)  # Year, month, day, hour
 # Location/height/name of site
-LAT = 53.225556
-LON = -0.881389
-SITE_HEIGHT = 43
-SITE_NAME = 'National Rail'
+LAT = 51.9975
+LON = -1.682611
+SITE_HEIGHT = 132
+SITE_NAME = 'Morton-in-Marsh'
 # ==============================================================================
 
 # Image directory
