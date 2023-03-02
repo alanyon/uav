@@ -47,7 +47,7 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Dates of start and end of trial
 FIRST_DTS = [datetime.utcnow().replace(minute=0, hour=0, second=0, 
                                        microsecond=0) + timedelta(hours=3)]
-LAST_DTS = [fdt + timedelta(hours=2) for fdt in FIRST_DTS]
+LAST_DTS = [fdt + timedelta(hours=6) for fdt in FIRST_DTS]
 # Location/height/name of site
 LATS = [54.2925]
 LONS = [-1.535556]
@@ -1114,7 +1114,7 @@ if __name__ == "__main__":
               'script')
         exit()
 
-    main(new_data, 'xcfl01')
+    main(new_data, 'xcel01')
 
     # # If code fails, try changing HPC hall
     # try:
