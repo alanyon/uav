@@ -46,7 +46,7 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Change these bits for new trial site/date
 # Dates of start and end of trial
 FIRST_DTS = [datetime.utcnow().replace(minute=0, second=0, microsecond=0)]
-LAST_DTS = [fdt + timedelta(hours=49) for fdt in FIRST_DTS]
+LAST_DTS = [fdt + timedelta(hours=3) for fdt in FIRST_DTS]
 # Location/height/name of site
 LATS = [54.2925]
 LONS = [-1.535556]
@@ -726,6 +726,10 @@ def get_fname_strs(m_date, start_vdt, end_vdt, hall):
 
             # Check if file has any relevant valid dates in it and append to
             # list if so
+            print('')
+            print('start_vdt', start_vdt)
+            print('vdt', vdt)
+            print('end_vdt', end_vdt)
             if start_vdt <= vdt <= end_vdt:
                 f_nums.append(num)
                 break
@@ -745,10 +749,9 @@ def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
     fpath = (f'{USER}@{hall}:{HPC_DIR}/{date_str}/enuk_um_{member_str}/'
              'enukaa_pd000')
     scratch_fname = f'{SCRATCH_DIR}/enukaa_pd000_{hour}_{member_str}'
-    print('fpath', fpath)
-    print('scratch_fname', scratch_fname)
+
     # Copy file from HPC to scratch directory
-    os.system(f'scp {fpath} {scratch_fname}')
+    # os.system(f'scp {fpath} {scratch_fname}')
 
     # If successful, get rotated lat/lon and orography cube from file
     if os.path.exists(scratch_fname):
@@ -764,7 +767,7 @@ def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
         orog_cube = orog_cube.interpolate(sample_pnts, iris.analysis.Linear())
 
         # Remove file from scratch directory
-        os.system(f'rm {scratch_fname}')
+        # os.system(f'rm {scratch_fname}')
 
     # Otherwise keep variables as False
     else:
@@ -793,8 +796,11 @@ def copy_from_hpc(f_num, m_date, member_str, hour, hall):
         scratch_fname = f'{SCRATCH_DIR}/{fname}_{hour}_{member_str}'
 
         # Copy to scratch directory and append scratch filename to list
-        os.system(f'scp {fpath} {scratch_fname}')
+        # os.system(f'scp {fpath} {scratch_fname}')
         scratch_fnames.append(scratch_fname)
+
+        print('fpath', fpath)
+        print('scratch_fname', scratch_fname)
 
     return scratch_fnames
 
@@ -828,7 +834,7 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
         print('vdt', vdt)
         # Cube list to append to
         hour_cube_list = iris.cube.CubeList([])
-        print('cube_list', cube_list)
+
         # Find forecasts valid for hour and append to cube list
         for cube in cube_list:
             print('cube', cube)
@@ -866,6 +872,8 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
     # Issue date/time of appropriate MOGREPS-UK file
     m_date = now_hour - timedelta(hours=hour)
 
+    print('m_date', m_date)
+
     # To append cubes to
     (wind_cubes, temp_cubes,
      rel_hum_cubes, rain_cubes, vis_cubes) = [], [], [], [], []
@@ -873,7 +881,9 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
     # Determine ensemble member numbers used and lead times to use
     member_strs, f_nums = get_fname_strs(m_date, start_vdt, end_vdt, hall)
 
-    print('member_strs, f_nums', member_strs, f_nums)
+    print('member_strs', member_strs)
+    print('f_nums', f_nums)
+    exit()
 
     # If none found, print message
     if not member_strs:
@@ -894,61 +904,62 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
         for f_num in f_nums:
 
             # Copy surface and model level files across from HPC
-            scratch_s, scratch_m = copy_from_hpc(f_num, m_date, member_str,
-                                                 hour, hall)
+            # scratch_s, scratch_m = copy_from_hpc(f_num, m_date, member_str,
+            #                                      hour, hall)
+
             # Only continue if files have successfully been copied across
             if (os.path.exists(scratch_s) and os.path.exists(scratch_m) and
                 orog_cube):
 
                 # Get wind speed cube
-                try:
-                    wind_spd = get_wind_spd(scratch_m, orog_cube, rot_lat,
-                                            rot_lon, start_vdt, end_vdt)
-                    print('wind_spd', wind_spd)
-                    wind_cubes.append(wind_spd)
-                except:
-                    print('Winds failed')
+                # try:
+                wind_spd = get_wind_spd(scratch_m, orog_cube, rot_lat,
+                                        rot_lon, start_vdt, end_vdt)
+                print('wind_spd', wind_spd)
+                wind_cubes.append(wind_spd)
+                # except:
+                #     print('Winds failed')
 
                 # Get temperature cube
-                try:
-                    temps = get_temps(scratch_s, scratch_m, orog_cube, rot_lat,
-                                        rot_lon, start_vdt, end_vdt)
-                    print('temps', temps)
-                    temp_cubes.append(temps)
-                except:
-                    print('Temps failed')
+                # try:
+                temps = get_temps(scratch_s, scratch_m, orog_cube, rot_lat,
+                                    rot_lon, start_vdt, end_vdt)
+                print('temps', temps)
+                temp_cubes.append(temps)
+                # except:
+                #     print('Temps failed')
 
                 # Get relative humidity cube
-                try:
-                    rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
-                                            rot_lat, rot_lon, start_vdt,
-                                            end_vdt)
-                    print('rel_hums', rel_hums)
-                    rel_hum_cubes.append(rel_hums)
-                except:
-                    print('Humidity failed')
+                # try:
+                rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
+                                        rot_lat, rot_lon, start_vdt,
+                                        end_vdt)
+                print('rel_hums', rel_hums)
+                rel_hum_cubes.append(rel_hums)
+                # except:
+                #     print('Humidity failed')
 
                 # Get precip cube
-                try:
-                    rains = get_rains(scratch_s, orog_cube, rot_lat, rot_lon,
-                                        start_vdt, end_vdt + timedelta(hours=1))
-                    print('rains', rains)
-                    rain_cubes.append(rains)
-                except:
-                    print('Rain failed')
+                # try:
+                rains = get_rains(scratch_s, orog_cube, rot_lat, rot_lon,
+                                    start_vdt, end_vdt + timedelta(hours=1))
+                print('rains', rains)
+                rain_cubes.append(rains)
+                # except:
+                #     print('Rain failed')
 
                 # Get visibility cube
-                try:
-                    vis = get_vis(scratch_s, orog_cube, rot_lat, rot_lon,
-                                    start_vdt, end_vdt)
-                    print('vis', vis)
-                    vis_cubes.append(vis)
-                except:
-                    print('Vis failed')
+                # try:
+                vis = get_vis(scratch_s, orog_cube, rot_lat, rot_lon,
+                                start_vdt, end_vdt)
+                print('vis', vis)
+                vis_cubes.append(vis)
+                # except:
+                #     print('Vis failed')
 
                 # Remove files from scratch directory
-                os.system(f'rm {scratch_s}')
-                os.system(f'rm {scratch_m}')
+                # os.system(f'rm {scratch_s}')
+                # os.system(f'rm {scratch_m}')
 
             # Otherwise, print message
             else:
@@ -1022,6 +1033,10 @@ def main(new_data, hall):
         # Determine how far out to go based on the oldest MOGREPS-UK file used
         latest_lead_vdt = now_hour - timedelta(hours=8) + timedelta(hours=126)
 
+        print('first_dt', first_dt)
+        print('last_dt', last_dt)
+        print('latest_lead_vdt', latest_lead_vdt)
+
         # Go as far out as possible up to day of forecast
         if latest_lead_vdt <= last_dt:
             start_vdt = latest_lead_vdt - timedelta(hours=fcast_period)
@@ -1045,56 +1060,63 @@ def main(new_data, hall):
             rain_cube_list = iris.cube.CubeList([])
             vis_cube_list = iris.cube.CubeList([])
 
-            # Use multiprocessing to process each hour in parellel
-            queue = Queue()
-            processes = []
+            # # Use multiprocessing to process each hour in parellel
+            # queue = Queue()
+            # processes = []
 
             # Get last 6 hours of MOGREPS-UK files (3 members per file)
             for hour in range(8, 2, -1):
 
-                # (wind_cubes, temp_cubes, rel_hum_cubes, 
-                #  rain_cubes, vis_cubes) = data_from_files(start_vdt, end_vdt, 
-                #                                           lat, lon, rot_lat, 
-                #                                           rot_lon, orog_cube, 
-                #                                           hour, now_hour, hall)
+                (wind_cubes, temp_cubes, rel_hum_cubes, 
+                 rain_cubes, vis_cubes) = data_from_files(start_vdt, end_vdt, 
+                                                          lat, lon, rot_lat, 
+                                                          rot_lon, orog_cube, 
+                                                          hour, now_hour, hall)
 
                 # Add to processes list for multiprocessing, using
                 # data_from_files function
-                args = (data_from_files,
-                        [start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
-                         orog_cube, hour, now_hour, hall], queue)
-                processes.append(Process(target=_mp_queue, args=args))
+            #     args = (data_from_files,
+            #             [start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
+            #              orog_cube, hour, now_hour, hall], queue)
+            #     processes.append(Process(target=_mp_queue, args=args))
 
-            # Start processes
-            for process in processes:
-                process.start()
+            # # Start processes
+            # for process in processes:
+            #     process.start()
 
-            # Collect output from processes and close queue
-            out_list = [queue.get() for _ in processes]
-            queue.close()
+            # # Collect output from processes and close queue
+            # out_list = [queue.get() for _ in processes]
+            # queue.close()
 
-            # Wait for all processes to complete before continuing
-            for process in processes:
-                process.join
+            # # Wait for all processes to complete before continuing
+            # for process in processes:
+            #     process.join
 
-            # Append output to cubelists
-            for item in out_list:
-                (wind_cubes, temp_cubes,
-                 rel_hum_cubes, rain_cubes, vis_cubes) = item
-                for wind_cube in wind_cubes:
-                    wind_spd_cube_list.append(wind_cube)
-                for temp_cube in temp_cubes:
-                    temp_cube_list.append(temp_cube)
-                for rel_hum_cube in rel_hum_cubes:
-                    rel_hum_cube_list.append(rel_hum_cube)
-                for rain_cube in rain_cubes:
-                    rain_cube_list.append(rain_cube)
-                for vis_cube in vis_cubes:
-                    vis_cube_list.append(vis_cube)
+            # # Append output to cubelists
+            # for item in out_list:
+            #     (wind_cubes, temp_cubes,
+            #      rel_hum_cubes, rain_cubes, vis_cubes) = item
+            #     for wind_cube in wind_cubes:
+            #         wind_spd_cube_list.append(wind_cube)
+            #     for temp_cube in temp_cubes:
+            #         temp_cube_list.append(temp_cube)
+            #     for rel_hum_cube in rel_hum_cubes:
+            #         rel_hum_cube_list.append(rel_hum_cube)
+            #     for rain_cube in rain_cubes:
+            #         rain_cube_list.append(rain_cube)
+            #     for vis_cube in vis_cubes:
+            #         vis_cube_list.append(vis_cube)
 
-                print(wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
-             rain_cube_list,
-             vis_cube_list)
+            for wind_cube in wind_cubes:
+                wind_spd_cube_list.append(wind_cube)
+            for temp_cube in temp_cubes:
+                temp_cube_list.append(temp_cube)
+            for rel_hum_cube in rel_hum_cubes:
+                rel_hum_cube_list.append(rel_hum_cube)
+            for rain_cube in rain_cubes:
+                rain_cube_list.append(rain_cube)
+            for vis_cube in vis_cubes:
+                vis_cube_list.append(vis_cube)
 
             # Pickle data for later use if needed (to save time)
             uf.pickle_data([wind_spd_cube_list, temp_cube_list,
