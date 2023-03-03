@@ -495,7 +495,6 @@ def rain_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
 
     # Convert to probabilities for each threshold for each hour cube
     for vdt in hour_cubes:
-        print(hour_cubes[vdt])
 
         # Merge cube
         hour_cube = hour_cubes[vdt].merge_cube()
@@ -745,8 +744,7 @@ def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
     fpath = (f'{USER}@{hall}:{HPC_DIR}/{date_str}/enuk_um_{member_str}/'
              'enukaa_pd000')
     scratch_fname = f'{SCRATCH_DIR}/enukaa_pd000_{hour}_{member_str}'
-    print('fpath', fpath)
-    print('scratch_fname', scratch_fname)
+
     # Copy file from HPC to scratch directory
     os.system(f'scp {fpath} {scratch_fname}')
 
@@ -825,16 +823,16 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
 
     # Get all forecasts valid for each hour in forecast period
     for vdt in rrule(HOURLY, dtstart=start_vdt, interval=1, count=num_fps):
-        print('vdt', vdt)
+
         # Cube list to append to
         hour_cube_list = iris.cube.CubeList([])
-        print('cube_list', cube_list)
+
         # Find forecasts valid for hour and append to cube list
         for cube in cube_list:
-            print('cube', cube)
+
             for time_cube in cube.slices_over("time"):
                 time_int = time_cube.coord('time').points[0]
-                print('time_int', time_int)
+
                 if cube.coord('time').units.num2date(time_int) == vdt:
                     hour_cube_list.append(time_cube)
         # Merge into single cube
@@ -873,8 +871,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
     # Determine ensemble member numbers used and lead times to use
     member_strs, f_nums = get_fname_strs(m_date, start_vdt, end_vdt, hall)
 
-    print('member_strs, f_nums', member_strs, f_nums)
-
     # If none found, print message
     if not member_strs:
         print('member_strs MISSING')
@@ -887,8 +883,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
         if not rot_lat or not rot_lon or not orog_cube:
             rot_lat, rot_lon, orog_cube = lat_lon_orog(lat, lon, m_date,
                                                        member_str, hour, hall)
-
-            print('orog_cube', orog_cube)
 
         # Load in each relevant file and get cubes
         for f_num in f_nums:
@@ -904,7 +898,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 try:
                     wind_spd = get_wind_spd(scratch_m, orog_cube, rot_lat,
                                             rot_lon, start_vdt, end_vdt)
-                    print('wind_spd', wind_spd)
                     wind_cubes.append(wind_spd)
                 except:
                     print('Winds failed')
@@ -913,7 +906,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 try:
                     temps = get_temps(scratch_s, scratch_m, orog_cube, rot_lat,
                                         rot_lon, start_vdt, end_vdt)
-                    print('temps', temps)
                     temp_cubes.append(temps)
                 except:
                     print('Temps failed')
@@ -923,7 +915,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                     rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
                                             rot_lat, rot_lon, start_vdt,
                                             end_vdt)
-                    print('rel_hums', rel_hums)
                     rel_hum_cubes.append(rel_hums)
                 except:
                     print('Humidity failed')
@@ -932,7 +923,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 try:
                     rains = get_rains(scratch_s, orog_cube, rot_lat, rot_lon,
                                         start_vdt, end_vdt + timedelta(hours=1))
-                    print('rains', rains)
                     rain_cubes.append(rains)
                 except:
                     print('Rain failed')
@@ -941,7 +931,6 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 try:
                     vis = get_vis(scratch_s, orog_cube, rot_lat, rot_lon,
                                     start_vdt, end_vdt)
-                    print('vis', vis)
                     vis_cubes.append(vis)
                 except:
                     print('Vis failed')
@@ -1091,10 +1080,6 @@ def main(new_data, hall):
                     rain_cube_list.append(rain_cube)
                 for vis_cube in vis_cubes:
                     vis_cube_list.append(vis_cube)
-
-                print(wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
-             rain_cube_list,
-             vis_cube_list)
 
             # Pickle data for later use if needed (to save time)
             uf.pickle_data([wind_spd_cube_list, temp_cube_list,
