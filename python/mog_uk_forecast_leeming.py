@@ -626,7 +626,7 @@ def update_html(date, site_height, site_name, site_fname):
     """
     # File name of html file and images/MASS directories
     html_fname = f'{HTML_DIR}/html/{site_fname}_mog_uk_fcasts.shtml'
-    img_dir = f'{HTML_DIR}/images/{site_fname}
+    img_dir = f'{HTML_DIR}/images/{site_fname}'
     mass_site_dir = f'{MASS_DIR}/{site_fname}'
 
     # Make new directories/files if needed
