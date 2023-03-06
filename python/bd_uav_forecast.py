@@ -28,7 +28,7 @@ MPH_TO_KTS = 0.86897423357831
 
 # ==============================================================================
 # Change these bits for new trial site/date
-TRIAL_SITES = ['Morton-in-Marsh']
+TRIAL_SITES = ['Leeming']
 SITE_LATS = [54.2925]
 SITE_LONS = [-1.535556]
 TRIAL_HEIGHTS = [40]  # metres
