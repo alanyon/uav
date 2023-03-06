@@ -627,7 +627,7 @@ def update_html(date, site_height, site_name, site_fname):
     # File name of html file and images/MASS directories
     html_fname = f'{HTML_DIR}/html/{site_fname}_mog_uk_fcasts.shtml'
     img_dir = f'{HTML_DIR}/images/{site_fname}'
-    mass_site_dir = f'{MASS_DIR}/{site_fname}'
+    mass_s_dir = f'{MASS_DIR}/{site_fname}'
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
@@ -703,11 +703,13 @@ def update_html(date, site_height, site_name, site_fname):
                 if (datetime.utcnow() - vdt).days >= 7:
                     first_lines.remove(line)    
 
-                # Also archive images
-                img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
-                for img_fname in img_fnames:
-                    os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
-                    os.system(f'moo put {img_fname}.tar.gz {mass_site_dir}')
+                    # Also archive images
+                    img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
+                    for img_fname in img_fnames:
+                        just_fname = os.path.basename(im_fname)
+                        os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
+                        os.system(f'moo put {img_fname}.tar.gz {mass_s_dir}/'
+                                  f'{just_fname}')
 
         # Concatenate the lists together
         new_lines = first_lines + last_lines
