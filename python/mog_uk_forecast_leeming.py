@@ -708,6 +708,7 @@ def update_html(date, site_height, site_name, site_fname):
                         just_fname = os.path.basename(img_fname)
                         os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
                         os.system(f'moo put {img_fname}.tar.gz {mass_s_dir}')
+                        os.system(f'rm {img_fname}.tar.gz {img_fname}')
 
         # Concatenate the lists together
         new_lines = first_lines + last_lines
