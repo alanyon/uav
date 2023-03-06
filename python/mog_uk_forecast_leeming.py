@@ -3,6 +3,7 @@ Script to create MOGREPS-UK cross-section plots.
 """
 import numpy as np
 import os
+import glob
 import sys
 import subprocess
 import matplotlib as mpl
@@ -66,6 +67,8 @@ RAIN_THRESHS = [0.2, 1., 4.]
 VIS_THRESHS = [10000, 5000, 1000, 500, 200]
 # Ratio of molecular weights of water and air
 REPSILON = 0.62198
+# For archiving
+MASS_DIR = 'moose:/adhoc/users/andre.lanyon/uav'
 
 
 def convert_lat_lon(fname, lat, lon):
@@ -621,8 +624,10 @@ def update_html(date, site_height, site_name, site_fname):
     """
     Updates html file.
     """
-    # File name of html file
+    # File name of html file and images/MASS directories
     html_fname = f'{HTML_DIR}/html/{site_fname}_mog_uk_fcasts.shtml'
+    img_dir = f'{HTML_DIR}/images/{site_fname}
+    mass_site_dir = f'{MASS_DIR}/{site_fname}'
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
@@ -697,6 +702,12 @@ def update_html(date, site_height, site_name, site_fname):
                                int(line[45:47]), int(line[47:49]))
                 if (datetime.utcnow() - vdt).days >= 7:
                     first_lines.remove(line)    
+
+                # Also archive images
+                img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
+                for img_fname in img_fnames:
+                    os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
+                    os.system(f'moo put {img_fname}.tar.gz {mass_site_dir}')
 
         # Concatenate the lists together
         new_lines = first_lines + last_lines
