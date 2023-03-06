@@ -684,6 +684,20 @@ def update_html(date, site_height, site_name, site_fname):
                            f'"selected" value="{date}">{date}</option>\n')
         last_lines[-8] = last_lines[-8].replace(last_lines[-8][-82:-71], date)
 
+        # Remove images if more than a week old
+        for line in reversed(first_lines):
+            
+            # Stop if reached the start of the dropdowm menu
+            if 'select id' in line:
+                break
+
+            # Otherwise, get date and remove if more than 1 week old
+            if line[39:49].isnumeric():
+                vdt = datetime(line[39:43], line[43:45], line[45:47], 
+                               line[47:49])
+                if (datetime.utcnow() - vdt).days >= 7:
+                    first_lines.remove(line)    
+
         # Concatenate the lists together
         new_lines = first_lines + last_lines
 
@@ -1008,95 +1022,95 @@ def main(new_data, hall):
         # Issue date/time of most recent MOGREPS-UK file to use
         rec_m_date = now_hour - timedelta(hours=3)
 
-        # Determine how far out to go based on the oldest MOGREPS-UK file used
-        latest_lead_vdt = now_hour - timedelta(hours=8) + timedelta(hours=126)
+        # # Determine how far out to go based on the oldest MOGREPS-UK file used
+        # latest_lead_vdt = now_hour - timedelta(hours=8) + timedelta(hours=126)
 
-        # Go as far out as possible up to day of forecast
-        if latest_lead_vdt <= last_dt:
-            start_vdt = latest_lead_vdt - timedelta(hours=fcast_period)
-            end_vdt = latest_lead_vdt
-        else:
-            end_vdt = last_dt
-            if rec_m_date >= first_dt:
-                start_vdt = rec_m_date
-            else:
-                start_vdt = first_dt
+        # # Go as far out as possible up to day of forecast
+        # if latest_lead_vdt <= last_dt:
+        #     start_vdt = latest_lead_vdt - timedelta(hours=fcast_period)
+        #     end_vdt = latest_lead_vdt
+        # else:
+        #     end_vdt = last_dt
+        #     if rec_m_date >= first_dt:
+        #         start_vdt = rec_m_date
+        #     else:
+        #         start_vdt = first_dt
 
-        if new_data == 'yes':
+        # if new_data == 'yes':
 
-            # Start these as False and update later (only need to assign once)
-            rot_lon, rot_lat, orog_cube = False, False, False
+        #     # Start these as False and update later (only need to assign once)
+        #     rot_lon, rot_lat, orog_cube = False, False, False
 
-            # To add cubes to
-            wind_spd_cube_list = iris.cube.CubeList([])
-            temp_cube_list = iris.cube.CubeList([])
-            rel_hum_cube_list = iris.cube.CubeList([])
-            rain_cube_list = iris.cube.CubeList([])
-            vis_cube_list = iris.cube.CubeList([])
+        #     # To add cubes to
+        #     wind_spd_cube_list = iris.cube.CubeList([])
+        #     temp_cube_list = iris.cube.CubeList([])
+        #     rel_hum_cube_list = iris.cube.CubeList([])
+        #     rain_cube_list = iris.cube.CubeList([])
+        #     vis_cube_list = iris.cube.CubeList([])
 
-            # Use multiprocessing to process each hour in parellel
-            queue = Queue()
-            processes = []
+        #     # Use multiprocessing to process each hour in parellel
+        #     queue = Queue()
+        #     processes = []
 
-            # Get last 6 hours of MOGREPS-UK files (3 members per file)
-            for hour in range(8, 2, -1):
+        #     # Get last 6 hours of MOGREPS-UK files (3 members per file)
+        #     for hour in range(8, 2, -1):
 
 
-                # Add to processes list for multiprocessing, using
-                # data_from_files function
-                args = (data_from_files,
-                        [start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
-                         orog_cube, hour, now_hour, hall], queue)
-                processes.append(Process(target=_mp_queue, args=args))
+        #         # Add to processes list for multiprocessing, using
+        #         # data_from_files function
+        #         args = (data_from_files,
+        #                 [start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
+        #                  orog_cube, hour, now_hour, hall], queue)
+        #         processes.append(Process(target=_mp_queue, args=args))
 
-            # Start processes
-            for process in processes:
-                process.start()
+        #     # Start processes
+        #     for process in processes:
+        #         process.start()
 
-            # Collect output from processes and close queue
-            out_list = [queue.get() for _ in processes]
-            queue.close()
+        #     # Collect output from processes and close queue
+        #     out_list = [queue.get() for _ in processes]
+        #     queue.close()
 
-            # Wait for all processes to complete before continuing
-            for process in processes:
-                process.join
+        #     # Wait for all processes to complete before continuing
+        #     for process in processes:
+        #         process.join
 
-            # Append output to cubelists
-            for item in out_list:
-                (wind_cubes, temp_cubes,
-                 rel_hum_cubes, rain_cubes, vis_cubes) = item
-                for wind_cube in wind_cubes:
-                    wind_spd_cube_list.append(wind_cube)
-                for temp_cube in temp_cubes:
-                    temp_cube_list.append(temp_cube)
-                for rel_hum_cube in rel_hum_cubes:
-                    rel_hum_cube_list.append(rel_hum_cube)
-                for rain_cube in rain_cubes:
-                    rain_cube_list.append(rain_cube)
-                for vis_cube in vis_cubes:
-                    vis_cube_list.append(vis_cube)
+        #     # Append output to cubelists
+        #     for item in out_list:
+        #         (wind_cubes, temp_cubes,
+        #          rel_hum_cubes, rain_cubes, vis_cubes) = item
+        #         for wind_cube in wind_cubes:
+        #             wind_spd_cube_list.append(wind_cube)
+        #         for temp_cube in temp_cubes:
+        #             temp_cube_list.append(temp_cube)
+        #         for rel_hum_cube in rel_hum_cubes:
+        #             rel_hum_cube_list.append(rel_hum_cube)
+        #         for rain_cube in rain_cubes:
+        #             rain_cube_list.append(rain_cube)
+        #         for vis_cube in vis_cubes:
+        #             vis_cube_list.append(vis_cube)
 
-            # Pickle data for later use if needed (to save time)
-            uf.pickle_data([wind_spd_cube_list, temp_cube_list,
-                            rel_hum_cube_list, rain_cube_list, vis_cube_list],
-                           f'{SCRATCH_DIR}/pickle')
+        #     # Pickle data for later use if needed (to save time)
+        #     uf.pickle_data([wind_spd_cube_list, temp_cube_list,
+        #                     rel_hum_cube_list, rain_cube_list, vis_cube_list],
+        #                    f'{SCRATCH_DIR}/pickle')
 
-        # For testing, latest pickled data can be used
-        else:
-            # Unpickle data
-            (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
-             rain_cube_list,
-             vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
+        # # For testing, latest pickled data can be used
+        # else:
+        #     # Unpickle data
+        #     (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
+        #      rain_cube_list,
+        #      vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
 
-        # Calculate probabilities and make cross-section plots
-        probs_and_plots(wind_spd_cube_list, 'wind', start_vdt, end_vdt,
-                        rec_m_date, site_fname)
-        probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date,
-                        site_fname)
-        probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
-                        end_vdt, rec_m_date, site_fname)
-        rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
-        vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
+        # # Calculate probabilities and make cross-section plots
+        # probs_and_plots(wind_spd_cube_list, 'wind', start_vdt, end_vdt,
+        #                 rec_m_date, site_fname)
+        # probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date,
+        #                 site_fname)
+        # probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
+        #                 end_vdt, rec_m_date, site_fname)
+        # rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
+        # vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
 
         # Update HTML page
         date_str = rec_m_date.strftime('%Y%m%d%HZ')
