@@ -706,7 +706,7 @@ def update_html(date, site_height, site_name, site_fname):
                     # Also archive images
                     img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
                     for img_fname in img_fnames:
-                        just_fname = os.path.basename(im_fname)
+                        just_fname = os.path.basename(img_fname)
                         os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
                         os.system(f'moo put {img_fname}.tar.gz {mass_s_dir}/'
                                   f'{just_fname}')
