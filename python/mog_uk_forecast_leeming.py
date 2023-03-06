@@ -28,6 +28,7 @@ try:
     HTML_DIR = os.environ['HTML_DIR']
     URL_START = os.environ['URL_START']
     SIDEBAR = os.environ['SIDEBAR']
+    MASS_DIR = os.environ['MASS_DIR']
 except KeyError as err:
     raise IOError(f'Environment variable {str(err)} not set.')
 
@@ -67,8 +68,6 @@ RAIN_THRESHS = [0.2, 1., 4.]
 VIS_THRESHS = [10000, 5000, 1000, 500, 200]
 # Ratio of molecular weights of water and air
 REPSILON = 0.62198
-# For archiving
-MASS_DIR = 'moose:/adhoc/users/andre.lanyon/uav'
 
 
 def convert_lat_lon(fname, lat, lon):
