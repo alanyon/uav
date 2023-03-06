@@ -46,7 +46,7 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # Change these bits for new trial site/date
 # Dates of start and end of trial
 FIRST_DTS = [datetime.utcnow().replace(minute=0, second=0, microsecond=0)]
-LAST_DTS = [fdt + timedelta(hours=49) for fdt in FIRST_DTS]
+LAST_DTS = [fdt + timedelta(hours=121) for fdt in FIRST_DTS]
 # Location/height/name of site
 LATS = [54.2925]
 LONS = [-1.535556]
@@ -1040,12 +1040,6 @@ def main(new_data, hall):
 
             # Get last 6 hours of MOGREPS-UK files (3 members per file)
             for hour in range(8, 2, -1):
-
-                # (wind_cubes, temp_cubes, rel_hum_cubes, 
-                #  rain_cubes, vis_cubes) = data_from_files(start_vdt, end_vdt, 
-                #                                           lat, lon, rot_lat, 
-                #                                           rot_lon, orog_cube, 
-                #                                           hour, now_hour, hall)
 
                 # Add to processes list for multiprocessing, using
                 # data_from_files function

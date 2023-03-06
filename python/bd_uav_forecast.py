@@ -29,8 +29,8 @@ MPH_TO_KTS = 0.86897423357831
 # ==============================================================================
 # Change these bits for new trial site/date
 TRIAL_SITES = ['Morton-in-Marsh']
-SITE_LATS = [51.9975]
-SITE_LONS = [-1.682611]
+SITE_LATS = [54.2925]
+SITE_LONS = [-1.535556]
 TRIAL_HEIGHTS = [132]  # metres
 FIRST_DTS = [datetime(2022, 5, 4, 0)]  # Year, month, day, hour
 LAST_DTS = [datetime(2022, 5, 5, 1)]  # Year, month, day, hour
