@@ -693,8 +693,8 @@ def update_html(date, site_height, site_name, site_fname):
 
             # Otherwise, get date and remove if more than 1 week old
             if line[39:49].isnumeric():
-                vdt = datetime(line[39:43], line[43:45], line[45:47], 
-                               line[47:49])
+                vdt = datetime(int(line[39:43]), int(line[43:45]), 
+                               int(line[45:47]), int(line[47:49]))
                 if (datetime.utcnow() - vdt).days >= 7:
                     first_lines.remove(line)    
 
