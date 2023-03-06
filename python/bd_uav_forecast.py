@@ -31,9 +31,9 @@ MPH_TO_KTS = 0.86897423357831
 TRIAL_SITES = ['Morton-in-Marsh']
 SITE_LATS = [54.2925]
 SITE_LONS = [-1.535556]
-TRIAL_HEIGHTS = [132]  # metres
-FIRST_DTS = [datetime(2022, 5, 4, 0)]  # Year, month, day, hour
-LAST_DTS = [datetime(2022, 5, 5, 1)]  # Year, month, day, hour
+TRIAL_HEIGHTS = [40]  # metres
+FIRST_DTS = [datetime.utcnow().replace(minute=0, second=0, microsecond=0)]  # Year, month, day, hour
+LAST_DTS = [fdt + timedelta(hours=121) for fdt in FIRST_DTS]  # Year, month, day, hour
 # ==============================================================================
 
 # Shouldn't have to change any of the following but can if necessary
