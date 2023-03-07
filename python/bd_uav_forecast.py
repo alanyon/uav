@@ -19,6 +19,7 @@ try:
     START_TIME = os.environ['START_TIME']
     URL_START = os.environ['URL_START']
     SIDEBAR = os.environ['SIDEBAR']
+    MASS_DIR = os.environ['MASS_DIR']
 except KeyError as err:
     raise IOError('Environment variable {} not set.'.format(str(err)))
 
@@ -327,9 +328,12 @@ def update_html(bd_sites, trial_site, trial_height):
     """
     Updates html file.
     """
-    # File name of html file
+    # File names/dirs
     trial_fname = trial_site.replace(' ', '_')
     html_fname = (f'{HTML_DIR}/html/{trial_fname}_bd_fcasts.shtml')
+    img_dir = f'{HTML_DIR}/images/{trial_fname}'
+    mass_s_dir = f'{MASS_DIR}/{trial_fname}'
+
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
@@ -379,6 +383,29 @@ def update_html(bd_sites, trial_site, trial_height):
         url = f'{URL_START}/{trial_fname}_bd_fcasts.shtml'
         first_lines.append(f'          <li><a href="{url}">{trial_site} '
                            'Best Data Forecasts</a></li>\n')
+
+        # Remove images if more than a week old
+        for line in reversed(first_lines):
+            
+            # Stop if reached the start of the dropdowm menu
+            if 'select id' in line:
+                break
+
+            # Otherwise, get date and remove if more than 1 week old
+            if line[39:49].isnumeric():
+                vdt = datetime(int(line[39:43]), int(line[43:45]), 
+                               int(line[45:47]), int(line[47:49]))
+                if (datetime.utcnow() - vdt).days >= 7:
+                    first_lines.remove(line)    
+
+                    # Also archive images
+                    img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
+                    for img_fname in img_fnames:
+                        just_fname = os.path.basename(img_fname)
+                        os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
+                        os.system(f'moo put {img_fname}.tar.gz {mass_s_dir}')
+                        os.system(f'rm {img_fname}.tar.gz {img_fname}')
+
         # Concatenate the lists together
         side_lines = first_lines + last_lines
 
@@ -433,9 +460,9 @@ def main():
         bd_sites = uf.best_bd_site(DATA_FILE, site_lat, site_lon, trial_height,
                                    RADIUS_LIMIT)
 
-        # Get forecasts based on selection of Best Data sites and make some
-        # plots
-        get_bd_df(bd_sites, trial_site, first_dt, last_dt)
+        # # Get forecasts based on selection of Best Data sites and make some
+        # # plots
+        # get_bd_df(bd_sites, trial_site, first_dt, last_dt)
 
         # Update html page
         update_html(bd_sites, trial_site, trial_height)
