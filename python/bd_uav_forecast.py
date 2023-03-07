@@ -384,28 +384,6 @@ def update_html(bd_sites, trial_site, trial_height):
         first_lines.append(f'          <li><a href="{url}">{trial_site} '
                            'Best Data Forecasts</a></li>\n')
 
-        # Remove images if more than a week old
-        for line in reversed(first_lines):
-            
-            # Stop if reached the start of the dropdowm menu
-            if 'select id' in line:
-                break
-
-            # Otherwise, get date and remove if more than 1 week old
-            if line[39:49].isnumeric():
-                vdt = datetime(int(line[39:43]), int(line[43:45]), 
-                               int(line[45:47]), int(line[47:49]))
-                if (datetime.utcnow() - vdt).days >= 7:
-                    first_lines.remove(line)    
-
-                    # Also archive images
-                    img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
-                    for img_fname in img_fnames:
-                        just_fname = os.path.basename(img_fname)
-                        os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
-                        os.system(f'moo put {img_fname}.tar.gz {mass_s_dir}')
-                        os.system(f'rm {img_fname}.tar.gz {img_fname}')
-
         # Concatenate the lists together
         side_lines = first_lines + last_lines
 
@@ -433,6 +411,28 @@ def update_html(bd_sites, trial_site, trial_height):
                            '</option>\n')
         last_lines[-11] = last_lines[-11].replace(last_lines[-11][-74:-64],
                                                   START_DATE_TIME)
+
+        # Remove images if more than a week old
+        for line in reversed(first_lines):
+            
+            # Stop if reached the start of the dropdowm menu
+            if 'select id' in line:
+                break
+
+            # Otherwise, get date and remove if more than 1 week old
+            if line[39:49].isnumeric():
+                vdt = datetime(int(line[39:43]), int(line[43:45]), 
+                               int(line[45:47]), int(line[47:49]))
+                if (datetime.utcnow() - vdt).days >= 7:
+                    first_lines.remove(line)    
+
+                    # Also archive images
+                    img_fnames = glob.glob(f'{img_dir}/*{line[39:49]}*')
+                    for img_fname in img_fnames:
+                        just_fname = os.path.basename(img_fname)
+                        os.system(f'tar -zcvf {img_fname}.tar.gz {img_fname}')
+                        os.system(f'moo put {img_fname}.tar.gz {mass_s_dir}')
+                        os.system(f'rm {img_fname}.tar.gz {img_fname}')
 
         # Concatenate the lists together
         new_lines = first_lines + last_lines
