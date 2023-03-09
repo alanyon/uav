@@ -461,9 +461,9 @@ def main():
         bd_sites = uf.best_bd_site(DATA_FILE, site_lat, site_lon, trial_height,
                                    RADIUS_LIMIT)
 
-        # # Get forecasts based on selection of Best Data sites and make some
-        # # plots
-        # get_bd_df(bd_sites, trial_site, first_dt, last_dt)
+        # Get forecasts based on selection of Best Data sites and make some
+        # plots
+        get_bd_df(bd_sites, trial_site, first_dt, last_dt)
 
         # Update html page
         update_html(bd_sites, trial_site, trial_height)
