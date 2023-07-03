@@ -1,5 +1,5 @@
 """ 
-Script to create MOGREPS-UK cross-section plots.
+Script to create MOGREPS-G cross-section plots.
 """
 import numpy as np
 import os
@@ -23,7 +23,7 @@ import useful_functions as uf
 # Import environment constants
 try:
     USER = os.environ['USER']
-    HPC_DIR = os.environ['MOG_UK_DIR']
+    MOG_G_DIR = os.environ['MOG_G_DIR']
     SCRATCH_DIR = os.environ['SCRATCH_DIR']
     HTML_DIR = os.environ['HTML_DIR']
     URL_START = os.environ['URL_START']
@@ -47,17 +47,19 @@ VIS_CON = iris.AttributeConstraint(STASH='m01s03i281')
 # ==============================================================================
 # Change these bits for new trial site/date
 # Dates of start and end of trial
-FIRST_DTS = [datetime.utcnow().replace(minute=0, second=0, microsecond=0)]
-LAST_DTS = [fdt + timedelta(hours=49) for fdt in FIRST_DTS]
+FIRST_DT = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+LAST_DT = FIRST_DT + timedelta(hours=24)
 # Location/height/name of site
-LATS = [54.2925]
-LONS = [-1.535556]
-SITE_HEIGHTS = [40]
-SITE_NAMES = ['Leeming']
+LAT = 33.035
+LON = -106.407
+SITE_HEIGHT = 40
+SITE_NAME = 'White Sands'
+SITE_FNAME = SITE_NAME.replace(' ', '_')
+
 # ==============================================================================
 
 # Lead time numbers used in filenames
-FNAME_NUMS = [str(num).zfill(3) for num in range(0, 126, 3)]
+FNAME_NUMS = [str(num).zfill(3) for num in range(0, 201, 3)]
 # For converting mph to knots
 MPH_TO_KTS = 0.86897423357831
 # Threshold lists (wind thresholds need to be in knots as well as mph)
@@ -68,24 +70,6 @@ RAIN_THRESHS = [0.2, 1., 4.]
 VIS_THRESHS = [10000, 5000, 1000, 500, 200]
 # Ratio of molecular weights of water and air
 REPSILON = 0.62198
-
-
-def convert_lat_lon(fname, lat, lon):
-    """
-    Converts standard lat/lon coordinates to rotated pole coordinates.
-    """
-    # Load cube
-    cube = iris.load_cube(fname, U_CON)
-
-    # Get rotated pole values
-    pole_lon = cube.coord_system().grid_north_pole_longitude
-    pole_lat = cube.coord_system().grid_north_pole_latitude
-
-    # Convert latitude and longitude points
-    rot_lon, rot_lat = rotate_pole(np.array(lon), np.array(lat), pole_lon,
-                                   pole_lat)
-
-    return rot_lat[0], rot_lon[0]
 
 
 def surf_to_levels(cube_s, cube_m):
@@ -110,7 +94,7 @@ def surf_to_levels(cube_s, cube_m):
     return cube_s
 
 
-def get_wind_spd(fname, orog_cube, lat, lon, start_vdt, end_vdt):
+def get_wind_spd(fname, member):
     """
     Gets wind speed cube from U and V wind component cubes.
     """
@@ -118,14 +102,13 @@ def get_wind_spd(fname, orog_cube, lat, lon, start_vdt, end_vdt):
     u_cube = iris.load_cube(fname, U_CON)
     v_cube = iris.load_cube(fname, V_CON)
 
-    # Sample points for interpolating for site location lats/lons
-    sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
-
     # Update cubes
-    u_cube = update_cube(u_cube, sample_pnts, orog_cube, start_vdt, end_vdt,
-                         'knots')
-    v_cube = update_cube(v_cube, sample_pnts, orog_cube, start_vdt, end_vdt,
-                         'knots')
+    u_cube = update_cube(u_cube, member, 'knots')
+    v_cube = update_cube(v_cube, member, 'knots')
+
+    # Only continue if updating cube successful
+    if not (u_cube and v_cube):
+        return False
 
     # Get wind speed cube
     wind_spd = (u_cube.data ** 2 + v_cube.data ** 2) ** 0.5
@@ -135,13 +118,13 @@ def get_wind_spd(fname, orog_cube, lat, lon, start_vdt, end_vdt):
     return wind_spd_cube
 
 
-def get_temps(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
+def get_temps(fname_d, fname_f, member):
     """
     Gets temperature cube, concatenating surface and model level cubes.
     """
     # Load cubes
-    temp_cube_s = iris.load(fname_s, TEMP_1P5_CON)[0]
-    temp_cube_m = iris.load_cube(fname_m, TEMP_CON)
+    temp_cube_s = iris.load(fname_d, TEMP_1P5_CON)[0]
+    temp_cube_m = iris.load_cube(fname_f, TEMP_CON)
 
     # Changes to enable concatenating
     temp_cube_s = surf_to_levels(temp_cube_s, temp_cube_m)
@@ -150,98 +133,77 @@ def get_temps(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
     temp_cube = iris.cube.CubeList([temp_cube_s,
                                     temp_cube_m]).concatenate_cube()
 
-    # Sample points for interpolating for site location lats/lons
-    sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
-
     # Update cubes
-    temp_cube = update_cube(temp_cube, sample_pnts, orog_cube, start_vdt,
-                            end_vdt, 'celsius')
+    temp_cube = update_cube(temp_cube, member, 'celsius')
 
     return temp_cube
 
 
-def get_rel_hums(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
+def get_rel_hums(fname_d, fname_f, member):
     """
     Gets relative humidity cube, calculating from air temperature, pressure
     and specific humidity for model levels, then concatenating with surface
     cube.
     """
     # Load cubes
-    spec_hum_cube_m = iris.load_cube(fname_m, SPEC_HUM_CON)
-    temp_cube_m = iris.load_cube(fname_m, TEMP_CON)
-    pres_cube_m = iris.load_cube(fname_m, PRES_CON)
-    rel_hum_cube_s = iris.load_cube(fname_s, REL_HUM_CON)
+    spec_hum_cube_m = iris.load_cube(fname_f, SPEC_HUM_CON)
+    temp_cube_m = iris.load_cube(fname_f, TEMP_CON)
+    pres_cube_m = iris.load_cube(fname_f, PRES_CON)
 
-    # Changes to enable concatenating
-    rel_hum_cube_s = surf_to_levels(rel_hum_cube_s, spec_hum_cube_m)
-    rel_hum_cube_s.standard_name = 'relative_humidity'
-
-    # Sample points for interpolating for site location lats/lons
-    sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
+    # Get rid of surface model level in specific humidity cube (so they all
+    # have 70 levels)
+    spec_hum_cube_m = spec_hum_cube_m[:, 1:, :, :]
 
     # Update cubes
-    spec_hum_cube_m = update_cube(spec_hum_cube_m, sample_pnts, orog_cube,
-                                  start_vdt, end_vdt, '')
-    temp_cube_m = update_cube(temp_cube_m, sample_pnts, orog_cube, start_vdt,
-                              end_vdt, 'celsius')
-    pres_cube_m = update_cube(pres_cube_m, sample_pnts, orog_cube, start_vdt,
-                              end_vdt, 'hPa')
-    rel_hum_cube_s = update_cube(rel_hum_cube_s, sample_pnts, orog_cube,
-                                 start_vdt, end_vdt, '')
+    spec_hum_cube_m = update_cube(spec_hum_cube_m, member, '')
+    temp_cube_m = update_cube(temp_cube_m, member, 'celsius')
+    pres_cube_m = update_cube(pres_cube_m, member, 'hPa')
+
+    # Only continue if updating cubes successful
+    if not all([spec_hum_cube_m, temp_cube_m, pres_cube_m]):
+        return False
 
     # Get pressure cube on same model levels as temp and humidity cubes
     sample_pnts = [('model_level_number',
-                  temp_cube_m.coord('model_level_number').points)]
+                    temp_cube_m.coord('model_level_number').points)]
     pres_cube_m = pres_cube_m.interpolate(sample_pnts, iris.analysis.Linear())
     pres_cube_m = temp_cube_m.copy(data=pres_cube_m.data)
 
     # Convert model level cube from specific humidity to relative humidity
-    rel_hum_cube_m = spec_hum_to_rel_hum(spec_hum_cube_m, pres_cube_m,
-                                         temp_cube_m)
-
-    # Concatenate surface and model levels cubes
-    rel_hum_cube = iris.cube.CubeList([rel_hum_cube_s,
-                                       rel_hum_cube_m]).concatenate_cube()
-
-    # Add derived altitude coordinate back in (disappears after concatenating)
-    fact = iris.aux_factory.HybridHeightFactory(
-        rel_hum_cube.coord('level_height'),
-        rel_hum_cube.coord('sigma'),
-        rel_hum_cube.coord('surface_altitude'))
-
-    rel_hum_cube.add_aux_factory(fact)
+    rel_hum_cube = spec_hum_to_rel_hum(spec_hum_cube_m, pres_cube_m,
+                                       temp_cube_m)
 
     return rel_hum_cube
 
 
-def get_rains(fname, orog_cube, lat, lon, start_vdt, end_vdt):
-
+def get_rains(fname, member):
 
     # Load cube
     cube = iris.load(fname, RAIN_CON)[0]
 
     # Sample points for interpolating for site location lats/lons
-    sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
-
-    # Interpolate horizontally using site lat/lon points
+    sample_pnts = [('latitude', LAT), ('longitude', LON)]
     cube = cube.interpolate(sample_pnts, iris.analysis.Linear())
 
     # Only use forecast valid for day of forecast
     cube_list = iris.cube.CubeList([])
     for ind, time_int in enumerate(cube.coord('time').points):
         vdt = cube.coord('time').units.num2date(time_int)
-        if start_vdt <= vdt <= end_vdt:
+        if FIRST_DT <= vdt <= LAST_DT + timedelta(hours=1):
             cube_list.append(cube[ind])
 
-    # Merge into single cube
-    new_cube = cube_list.merge_cube()
+    # Merge into single cube (if possible)
+    try:
+        new_cube = cube_list.merge_cube()
+    except:
+        print('Empty CubeList (rain)')
+        return False
 
-    # Add in realisation coordinate for control member to enable merging later
-    # (use arbitrary value of 100)
+    # Add in realisation coordinate
     try:
         new_cube.coord('realization')
     except:
-        real_coord = iris.coords.DimCoord(100, 'realization', units='1')
+        real_coord = iris.coords.DimCoord(member, 'realization', units='1')
         new_cube.add_aux_coord(real_coord)
 
     # Convert units to mm hr-1
@@ -251,65 +213,54 @@ def get_rains(fname, orog_cube, lat, lon, start_vdt, end_vdt):
     return new_cube
 
 
-def get_vis(fname, orog_cube, lat, lon, start_vdt, end_vdt):
-
+def get_vis(fname, member):
 
     # Load cube
     cube = iris.load(fname, VIS_CON)[0]
 
     # Sample points for interpolating for site location lats/lons
-    sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
-
-    # Interpolate horizontally using site lat/lon points
+    sample_pnts = [('latitude', LAT), ('longitude', LON)]
     cube = cube.interpolate(sample_pnts, iris.analysis.Linear())
 
     # Only use forecast valid for day of forecast
     cube_list = iris.cube.CubeList([])
     for ind, time_int in enumerate(cube.coord('time').points):
         vdt = cube.coord('time').units.num2date(time_int)
-        if start_vdt <= vdt <= end_vdt:
+        if FIRST_DT <= vdt <= LAST_DT:
             cube_list.append(cube[ind])
 
-    # Merge into single cube
-    new_cube = cube_list.merge_cube()
-
-    # Add in realisation coordinate for control member to enable merging later
-    # (use arbitrary value of 100)
+    # Merge into single cube (if possible)
     try:
+        new_cube = cube_list.merge_cube()
+    except:
+        print('Empty CubeList (rain)')
+        return False
+
+    # Add in realisation coordinate
+    try: 
         new_cube.coord('realization')
     except:
-        real_coord = iris.coords.DimCoord(100, 'realization', units='1')
+        real_coord = iris.coords.DimCoord(member, 'realization', units='1')
         new_cube.add_aux_coord(real_coord)
 
     return new_cube
 
 
-def update_cube(cube, sample_pnts, orog_cube, start_vdt, end_vdt, c_units):
+def update_cube(cube, member, c_units):
     """
     Gets smaller cube, interpolating using site lat/lon, removes forecasts not
     valid on forecast day, changes units appropriately and adds derived
     altitude coordinate.
     """
+    # Sample points for interpolating for site location lats/lons
+    sample_pnts = [('latitude', LAT), ('longitude', LON)]
+
     # Interpolate horizontally using site lat/lon points
     cube = cube.interpolate(sample_pnts, iris.analysis.Linear())
-
-    # Add orography as auxiliary coordinate to cube
-    orog_coord = iris.coords.AuxCoord(orog_cube.data, 'surface_altitude',
-                                      units='m')
-    cube.add_aux_coord(orog_coord)
-
-    # Define hybrid height coordinate
-    fact = iris.aux_factory.HybridHeightFactory(cube.coord('level_height'),
-                                                cube.coord('sigma'),
-                                                cube.coord('surface_altitude'))
-
-    # Add hybrid height coordinate to cube
-    cube.add_aux_factory(fact)
 
     # Convert units if necessary (knots for wind, celsius for temps)
     if c_units:
         cube.convert_units(c_units)
-
 
     # Convert altitude units from metres to feet
     cube.coord('altitude').convert_units('feet')
@@ -320,18 +271,21 @@ def update_cube(cube, sample_pnts, orog_cube, start_vdt, end_vdt, c_units):
     cube_list = iris.cube.CubeList([])
     for ind, time_int in enumerate(cube.coord('time').points):
         vdt = cube.coord('time').units.num2date(time_int)
-        if start_vdt <= vdt <= end_vdt:
+        if FIRST_DT <= vdt <= LAST_DT:
             cube_list.append(cube[ind])
 
     # Merge into single cube
-    new_cube = cube_list.merge_cube()
+    try:
+        new_cube = cube_list.merge_cube()
+    except:
+        print('Empty Cubelist (update_cube line 282)')
+        return False
 
-    # Add in realisation coordinate for control member to enable merging later
-    # (use arbitrary value of 100)
+    # Add in realisation coordinate if needed
     try:
         new_cube.coord('realization')
     except:
-        real_coord = iris.coords.DimCoord(100, 'realization', units='1')
+        real_coord = iris.coords.DimCoord(member, 'realization', units='1')
         new_cube.add_aux_coord(real_coord)
 
     return new_cube
@@ -365,7 +319,7 @@ def calc_probs(cube, threshold, temp_thresh):
     return probs_cube
 
 
-def x_plot(cube, issue_dt, param, threshold, temp_thresh, units, site_fname):
+def x_plot(cube, g_hour, param, threshold, temp_thresh, units):
     """
     Makes cross section plot over time.
     """
@@ -393,7 +347,6 @@ def x_plot(cube, issue_dt, param, threshold, temp_thresh, units, site_fname):
         contour.set_edgecolor("face")
 
     # Set limits and labels
-    ax.set_ylim(0, 200)
     ax.set_ylabel('Altitude above ground level (ft)')
 
     # Format dates
@@ -421,12 +374,12 @@ def x_plot(cube, issue_dt, param, threshold, temp_thresh, units, site_fname):
                          f'{threshold} {units}', fontsize=12)
 
     # Figure title
-    fig.suptitle(f'MOGREPS-UK {param_str} probabilities - cross-section over '
+    fig.suptitle(f'MOGREPS-G {param_str} probabilities - cross-section over '
                  'time', fontsize=25)
 
     # Save figure and close plot
-    date_str = issue_dt.strftime('%Y%m%d%HZ')
-    fname = (f'{HTML_DIR}/images/{site_fname}/mogreps_x_section_{date_str}'
+    date_str = g_hour.strftime('%Y%m%d%HZ')
+    fname = (f'{HTML_DIR}/images/{SITE_FNAME}/mogreps_x_section_{date_str}'
              f'_{param}_{threshold}.png')
     fig.savefig(fname)
     plt.close()
@@ -458,18 +411,18 @@ def vis_probs(cube, threshold):
     return probs_cube
 
 
-def rain_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
+def rain_plots(cube_list, g_hour):
     """
     Makes cross section plot over time.
     """
     # Number of 5 minute forecast periods
-    num_fps = int((end_vdt - start_vdt).total_seconds() / 300)
+    num_fps = int((LAST_DT - FIRST_DT).total_seconds() / 300)
 
     # Make empty cube list to append to for each threshold
     prob_lists = [iris.cube.CubeList([]) for _ in RAIN_THRESHS]
 
     # List of valid datetimes
-    vdts = list(rrule(MINUTELY, dtstart=start_vdt, interval=5, count=num_fps))
+    vdts = list(rrule(MINUTELY, dtstart=FIRST_DT, interval=5, count=num_fps))
 
     # Dictionary with empty cubelist assigned to each 5 minute valid datetime
     five_min_cubes = {vdt: iris.cube.CubeList([]) for vdt in vdts}
@@ -515,12 +468,12 @@ def rain_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make some plots
-    [prob_plot(probs_cube, m_date, thresh, 'rain',
-               'max rate rate in hour exceeding', 'mm hr-1', site_fname)
+    [prob_plot(probs_cube, g_hour, thresh, 'rain',
+               'max rate rate in hour exceeding', 'mm hr-1')
      for probs_cube, thresh in zip(merged_probs, RAIN_THRESHS)]
 
 
-def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
+def vis_plots(cube_list, g_hour):
     """
     Makes cross section plot over time.
     """
@@ -528,10 +481,10 @@ def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
     prob_lists = [iris.cube.CubeList([]) for _ in VIS_THRESHS]
 
     # Number of 1 hour forecast periods
-    num_fps = int((end_vdt - start_vdt).total_seconds() / 3600)
+    num_fps = int((LAST_DT - FIRST_DT).total_seconds() / 3600)
 
     # List of hourly dts in forecast period
-    vdts = rrule(HOURLY, dtstart=start_vdt, interval=1, count=num_fps)
+    vdts = rrule(HOURLY, dtstart=FIRST_DT, interval=1, count=num_fps)
     hour_cubes = {vdt: iris.cube.CubeList([]) for vdt in vdts}
 
     # Get all forecasts valid for each hour in forecast period
@@ -562,13 +515,11 @@ def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make some plots
-    [prob_plot(probs_cube, m_date, thresh, 'vis', '1.5m visibility below', 'm',
-               site_fname)
+    [prob_plot(probs_cube, g_hour, thresh, 'vis', '1.5m visibility below', 'm')
      for probs_cube, thresh in zip(merged_probs, VIS_THRESHS)]
 
 
-def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units,
-              site_fname):
+def prob_plot(cube, g_hour, threshold, wx_type, title_str, units):
 
     # Colours and probability levels used in plot
     levels = np.array([0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 100])
@@ -608,12 +559,12 @@ def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units,
     ax.set_xticklabels(xlabels, fontsize=12)
 
     # Figure title
-    fig.suptitle(f'MOGREPS-UK probabilities of {title_str} {threshold}{units}',
+    fig.suptitle(f'MOGREPS-G probabilities of {title_str} {threshold}{units}',
                  fontsize=22)
 
     # Save figure and close plot
-    date_str = issue_dt.strftime('%Y%m%d%HZ')
-    fname = (f'{HTML_DIR}/images/{site_fname}/mogreps_x_section_{date_str}'
+    date_str = g_hour.strftime('%Y%m%d%HZ')
+    fname = (f'{HTML_DIR}/images/{SITE_FNAME}/mogreps_x_section_{date_str}'
              f'_{wx_type}_{threshold}.png')
     fig.savefig(fname)
     plt.close()
@@ -624,9 +575,9 @@ def update_html(date, site_height, site_name, site_fname):
     Updates html file.
     """
     # File name of html file and images/MASS directories
-    html_fname = f'{HTML_DIR}/html/{site_fname}_mog_uk_fcasts.shtml'
-    img_dir = f'{HTML_DIR}/images/{site_fname}'
-    mass_s_dir = f'{MASS_DIR}/{site_fname}'
+    html_fname = f'{HTML_DIR}/html/{SITE_FNAME}_mog_uk_fcasts.shtml'
+    img_dir = f'{HTML_DIR}/images/{SITE_FNAME}'
+    mass_s_dir = f'{MASS_DIR}/{SITE_FNAME}'
 
     # Make new directories/files if needed
     if not os.path.exists(html_fname):
@@ -642,13 +593,13 @@ def update_html(date, site_height, site_name, site_fname):
         file.close()
 
         # Change bits specific to trial
-        lines[34] = lines[34].replace('TRIAL', site_fname)
-        lines[48] = lines[48].replace('NAME', site_name)
-        lines[48] = lines[48].replace('HEIGHT', str(site_height))
+        lines[34] = lines[34].replace('TRIAL', SITE_FNAME)
+        lines[48] = lines[48].replace('NAME', SITE_NAME)
+        lines[48] = lines[48].replace('HEIGHT', str(SITE_HEIGHT))
         lines[76] = lines[76].replace('DATE', date)
-        lines[79] = lines[79].replace('TRIAL', site_fname)
-        lines[79] = lines[79].replace('NAME', site_name)
-        lines[88] = lines[88].replace('TRIAL', site_fname)
+        lines[79] = lines[79].replace('TRIAL', SITE_FNAME)
+        lines[79] = lines[79].replace('NAME', SITE_NAME)
+        lines[88] = lines[88].replace('TRIAL', SITE_FNAME)
         lines[88] = lines[88].replace('DATE', date)
 
         # Assign to new_lines
@@ -662,9 +613,9 @@ def update_html(date, site_height, site_name, site_fname):
         # Split up lines and append new line
         first_lines = lines[:-5]
         last_lines = lines[-5:]
-        url = f'{URL_START}/{site_fname}_mog_uk_fcasts.shtml'
+        url = f'{URL_START}/{SITE_FNAME}_mog_uk_fcasts.shtml'
         first_lines.append(f'          <li><a href="{url}">'
-                           f'{site_name} MOGREPS-UK Forecasts</a></li>\n')
+                           f'{SITE_NAME} MOGREPS-G Forecasts</a></li>\n')
 
         # Concatenate the lists together and re-write the lines to a new file
         side_lines = first_lines + last_lines
@@ -720,56 +671,13 @@ def update_html(date, site_height, site_name, site_fname):
     file.close()
 
 
-def get_fname_strs(m_date, start_vdt, end_vdt, hall):
+def get_orog(lat, lon, member, m_dir_path):
     """
-    Determines member numbers and lead times to use.
+    Gets orography cube interpolated to lat/lon values.
     """
-    # Define date string for filenames
-    date_str = m_date.strftime('%Y%m%dT%H00Z')
-
-    # Read filenames on HPC, temporarily ssh-ing onto HPC
-    dirs = subprocess.Popen([f'ssh -Y {hall} ls {HPC_DIR}/{date_str}/'],
-                            stdout=subprocess.PIPE, shell=True)
-    (out, err) = dirs.communicate()
-
-    # Get member numbers from filenames
-    member_strs = []
-    for string in str(out).split('enuk_um_'):
-        if string[:3].isnumeric():
-            member_strs.append(string[:3])
-
-    # Determine lead time numbers used for filenames required, based on day of
-    # forecast and MOGREPS-UK run
-    f_nums = []
-    for num in FNAME_NUMS:
-
-        # Append to f_nums if file contains data for forecast date
-        for lead in range(int(num), int(num) + 4):
-
-            # Get valid date
-            vdt = m_date + timedelta(hours=lead)
-
-            # Check if file has any relevant valid dates in it and append to
-            # list if so
-            if start_vdt <= vdt <= end_vdt:
-                f_nums.append(num)
-                break
-
-    return member_strs, f_nums
-
-
-def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
-    """
-    Converts standard lat/lon to rotated pole coordinates and gets orography
-    cube interpolated to rotated pole lat/lon.
-    """
-    # Define date string for filenames
-    date_str = m_date.strftime('%Y%m%dT%H00Z')
-
     # Define filename on HPC and target filename on scratch
-    fpath = (f'{USER}@{hall}:{HPC_DIR}/{date_str}/enuk_um_{member_str}/'
-             'enukaa_pd000')
-    scratch_fname = f'{SCRATCH_DIR}/enukaa_pd000_{hour}_{member_str}'
+    fpath = (f'{m_dir_path}/englaa_pf000')
+    scratch_fname = f'{SCRATCH_DIR}/{member}_englaa_pf000'
 
     # Copy file from HPC to scratch directory
     os.system(f'scp {fpath} {scratch_fname}')
@@ -777,14 +685,11 @@ def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
     # If successful, get rotated lat/lon and orography cube from file
     if os.path.exists(scratch_fname):
 
-        # Convert lat/lon to rotated pole coordinates
-        lat, lon = convert_lat_lon(scratch_fname, lat, lon)
-
         # Get orography cube
         orog_cube = iris.load_cube(scratch_fname, OROG_CON)
 
         # Linearly interpolate orography cube for site location lats/lons
-        sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
+        sample_pnts = [('latitude', lat), ('longitude', lon)]
         orog_cube = orog_cube.interpolate(sample_pnts, iris.analysis.Linear())
 
         # Remove file from scratch directory
@@ -793,28 +698,24 @@ def lat_lon_orog(lat, lon, m_date, member_str, hour, hall):
     # Otherwise keep variables as False
     else:
         lat, lon, orog_cube = False, False, False
+    
+    return orog_cube
 
-    return lat, lon, orog_cube
 
-
-def copy_from_hpc(f_num, m_date, member_str, hour, hall):
+def copy_from_hpc(f_num, latest_mog_dir, member):
     """
     Copies file from HPC to scratch directory.
     """
-    # Define date string for filenames
-    date_str = m_date.strftime('%Y%m%dT%H00Z')
-
     # List to append filenames to
     scratch_fnames = []
 
-    # enukaa_pd*** and enukaa_pe*** files needed
-    for letter in ['d', 'e']:
+    # enukaa_pd*** and enukaa_pf*** files needed
+    for letter in ['d', 'f']:
 
         # Define filenames
-        fname = 'enukaa_p{}{}'.format(letter, f_num)
-        fpath = (f'{USER}@{hall}:{HPC_DIR}/{date_str}/enuk_um_{member_str}/'
-                 f'{fname}')
-        scratch_fname = f'{SCRATCH_DIR}/{fname}_{hour}_{member_str}'
+        fname = 'englaa_p{}{}'.format(letter, f_num)
+        fpath = (f'{latest_mog_dir}/{fname}')
+        scratch_fname = f'{SCRATCH_DIR}/{member}_{fname}'
 
         # Copy to scratch directory and append scratch filename to list
         os.system(f'scp {fpath} {scratch_fname}')
@@ -823,7 +724,7 @@ def copy_from_hpc(f_num, m_date, member_str, hour, hall):
     return scratch_fnames
 
 
-def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
+def probs_and_plots(cube_list, param, g_hour):
     """
     Calculates probabilities and makes cross-section plots.
     """
@@ -845,17 +746,16 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     prob_lists = [iris.cube.CubeList([]) for _ in thresholds]
 
     # Number of 1 hour forecast periods
-    num_fps = int((end_vdt - start_vdt).total_seconds() / 3600)
+    num_fps = int((LAST_DT - FIRST_DT).total_seconds() / 3600)
 
     # Get all forecasts valid for each hour in forecast period
-    for vdt in rrule(HOURLY, dtstart=start_vdt, interval=1, count=num_fps):
+    for vdt in rrule(HOURLY, dtstart=FIRST_DT, interval=1, count=num_fps):
 
         # Cube list to append to
         hour_cube_list = iris.cube.CubeList([])
 
         # Find forecasts valid for hour and append to cube list
         for cube in cube_list:
-
             for time_cube in cube.slices_over("time"):
                 time_int = time_cube.coord('time').points[0]
 
@@ -877,97 +777,62 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make cross section plots
-    [x_plot(probs_cube, m_date, param, thresh, temp_thresh, units, site_fname)
+    [x_plot(probs_cube, g_hour, param, thresh, temp_thresh, units)
      for probs_cube, thresh in zip(merged_probs, thresholds)]
 
 
-def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
-                    hour, now_hour, hall):
+def data_from_files(latest_mog_dir, f_nums, member):
     """
-    Gets data from MOGREPS-UK files, if possible, then sorts out data and
+    Gets data from MOGREPS-G files, if possible, then sorts out data and
     returns lists of cubes.
     """
-    # Issue date/time of appropriate MOGREPS-UK file
-    m_date = now_hour - timedelta(hours=hour)
+    # Get member directory
+    m_dir_name = f'engl_um_{member:03}'
+    m_dir_path = f'{latest_mog_dir}/{m_dir_name}'
 
     # To append cubes to
-    (wind_cubes, temp_cubes,
+    (wind_cubes, temp_cubes, 
      rel_hum_cubes, rain_cubes, vis_cubes) = [], [], [], [], []
 
-    # Determine ensemble member numbers used and lead times to use
-    member_strs, f_nums = get_fname_strs(m_date, start_vdt, end_vdt, hall)
+    # Load in each relevant file and get cubes
+    for f_num in f_nums:
 
-    # If none found, print message
-    if not member_strs:
-        print('member_strs MISSING')
+        # Copy surface and model level files across from HPC
+        scratch_d, scratch_f = copy_from_hpc(f_num, m_dir_path, member)
 
-    # Copy files accross from HPC and get data from them
-    for member_str in member_strs:
+        # Only continue if files have successfully been copied across
+        if not (os.path.exists(scratch_d) and os.path.exists(scratch_f)):
+            print('FILE(S) MISSING')
+            continue
 
-        # Convert lat/lon and get constraints and get orography cube
-        # (if needed - only need to do this once)
-        if not rot_lat or not rot_lon or not orog_cube:
-            rot_lat, rot_lon, orog_cube = lat_lon_orog(lat, lon, m_date,
-                                                       member_str, hour, hall)
+        # Get wind speed cube and append to list if successful
+        wind_spd = get_wind_spd(scratch_f, member)
+        if wind_spd:
+            wind_cubes.append(wind_spd)
 
-        # Load in each relevant file and get cubes
-        for f_num in f_nums:
+        # Get temperature cube and append to list if successful
+        temps = get_temps(scratch_d, scratch_f, member)
+        if temps:
+            temp_cubes.append(temps)
 
-            # Copy surface and model level files across from HPC
-            scratch_s, scratch_m = copy_from_hpc(f_num, m_date, member_str,
-                                                 hour, hall)
-            # Only continue if files have successfully been copied across
-            if (os.path.exists(scratch_s) and os.path.exists(scratch_m) and
-                orog_cube):
+        # Get relative humidity cube and append to list if successful
+        rel_hums = get_rel_hums(scratch_d, scratch_f, member)
+        if rel_hums:
+            rel_hum_cubes.append(rel_hums)
 
-                # Get wind speed cube
-                try:
-                    wind_spd = get_wind_spd(scratch_m, orog_cube, rot_lat,
-                                            rot_lon, start_vdt, end_vdt)
-                    wind_cubes.append(wind_spd)
-                except:
-                    print('Winds failed')
+        # Get precip cube and append to list if successful
+        rains = get_rains(scratch_d, member)
+        if rains:
+            rain_cubes.append(rains)
 
-                # Get temperature cube
-                try:
-                    temps = get_temps(scratch_s, scratch_m, orog_cube, rot_lat,
-                                        rot_lon, start_vdt, end_vdt)
-                    temp_cubes.append(temps)
-                except:
-                    print('Temps failed')
+        # Get visibility cube and append to list if successful
+        vis = get_vis(scratch_d, member)
+        if vis:
+           vis_cubes.append(vis)
 
-                # # Get relative humidity cube
-                # try:
-                #     rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
-                #                             rot_lat, rot_lon, start_vdt,
-                #                             end_vdt)
-                #     rel_hum_cubes.append(rel_hums)
-                # except:
-                #     print('Humidity failed')
-
-                # Get precip cube
-                try:
-                    rains = get_rains(scratch_s, orog_cube, rot_lat, rot_lon,
-                                        start_vdt, end_vdt + timedelta(hours=1))
-                    rain_cubes.append(rains)
-                except:
-                    print('Rain failed')
-
-                # Get visibility cube
-                try:
-                    vis = get_vis(scratch_s, orog_cube, rot_lat, rot_lon,
-                                    start_vdt, end_vdt)
-                    vis_cubes.append(vis)
-                except:
-                    print('Vis failed')
-
-                # Remove files from scratch directory
-                os.system(f'rm {scratch_s}')
-                os.system(f'rm {scratch_m}')
-
-            # Otherwise, print message
-            else:
-                print('FILE(S) MISSING')
+        # Remove files from scratch directory
+        os.system(f'rm {scratch_d}')
+        os.system(f'rm {scratch_f}')
 
     return wind_cubes, temp_cubes, rel_hum_cubes, rain_cubes, vis_cubes
 
@@ -998,134 +863,179 @@ def spec_hum_to_rel_hum(spec_hum_cube, pressure_cube, t_dry_cube):
 
 
 def _mp_queue(function, args, queue):
-
-    """ Wrapper function for allowing multiprocessing of a function and
+    """ 
+    Wrapper function for allowing multiprocessing of a function and
     ensuring that the output is appended to a queue, to be picked up later.
     """
     queue.put(function(*args))
 
 
-def main(new_data, hall):
+def get_mog_info(now_hour, hall):
+    """
+    Finds directory with latest mog-g files based on time now.
+    """
+    # Determine ow many hours to subtract to get latest model
+    if now_hour.hour in [0, 6, 12, 18]:
+        subtract_hours = 12
+    elif now_hour.hour in [1, 7, 13, 19]:
+        subtract_hours = 13
+    elif now_hour.hour in [2, 8, 14, 20]:
+        subtract_hours = 8
+    elif now_hour.hour in [3, 9, 15, 21]:
+        subtract_hours = 9
+    elif now_hour.hour in [4, 10, 16, 22]:
+        subtract_hours = 10
+    else:
+        subtract_hours = 11
+
+    # Subtract hours
+    g_hour = now_hour - timedelta(hours=subtract_hours)
+
+    # Convert datetime to string in format of directory name
+    dir_dt_str = g_hour.strftime('%Y%m%dT%H%MZ')
+
+    # Full directory paths
+    m_path = f'{MOG_G_DIR}/{dir_dt_str}/engl_um'
+    full_path = f'{USER}@{hall}:{m_path}'
+
+    # Determine members with long lead times
+    long_members = []
+    for member in range(45):
+        mem_str = f'{member:03}'
+        dirs = subprocess.Popen([f'ssh -Y {hall} ls '
+                                 f'{m_path}/engl_um_{mem_str}/'],
+                                stdout=subprocess.PIPE, shell=True)
+        (out, err) = dirs.communicate()
+        if 'englaa_pf150' in str(out):
+            long_members.append(member)   
+
+    # Determine lead time numbers used for filenames required
+    f_nums = []
+    for num in FNAME_NUMS:
+
+        # 000 file only has T+0 in it
+        if num == 0:
+
+            # Check if withing start and end dates and append number if so
+            if FIRST_DT <= g_hour <= LAST_DT:
+                f_nums.append(num)
+  
+        # All other file have 3 lead times up to the lead time in the filename
+        else:
+            for lead in [int(num) - 2, int(num) - 1, int(num)]:
+
+                # Get valid date
+                vdt = g_hour + timedelta(hours=lead)
+
+                # Check if file has any relevant valid dates in it and append to
+                # list if so
+                if FIRST_DT <= vdt <= LAST_DT:
+                    f_nums.append(num)
+                    break
+
+    return g_hour, full_path, f_nums, long_members
+
+
+def main(hall):
     """
     Copies files from HPC, extracts data and creates wind, temperature and
     relative humidity cubes. Probabilities are then calculated based on a few
     thresholds and cross-section plots are created and saved as png files.
     HTML page displaying plots is also updated.
     """
-    # Loop through all sites
-    for (first_dt, last_dt, lat,
-         lon, site_height, site_name) in zip(FIRST_DTS, LAST_DTS, LATS, LONS,
-                                             SITE_HEIGHTS, SITE_NAMES):
+    # Make image directory if needed
+    img_dir = f'{HTML_DIR}/images/{SITE_NAME.replace(" ", "_")}'
+    if not os.path.exists(img_dir):
+        os.system(f'mkdir {img_dir}')
 
-        # For naming files
-        site_fname = site_name.replace(' ', '_')
+    # Calculate period of forecast from first and last dts
+    fcast_period = int((LAST_DT - FIRST_DT).total_seconds() / 3600) - 1
 
-        # Make image directory if needed
-        img_dir = f'{HTML_DIR}/images/{site_name.replace(" ", "_")}'
-        if not os.path.exists(img_dir):
-            os.system(f'mkdir {img_dir}')
+    # Time now (only to hour)
+    now_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    # now_hour = datetime(2023, 6, 29, 7)
 
-        # Calculate period of forecast from first and last dts
-        fcast_period = int((last_dt - first_dt).total_seconds() / 3600) - 1
+    # Directory path of latest MOG-G data and lead time fnames
+    # g_hour, latest_mog_dir, f_nums, long_members = get_mog_info(now_hour, hall)
+    g_hour = datetime(2023, 6, 30, 0)
+    # latest_mog_dir = 'alanyon@xcfl01:/critical/opfc/suites-oper/global/share/cycle/20230628T1800Z/engl_um'
+    # f_nums = ['015']
+    # long_members = [0, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
 
-        # Time now (only to hour)
-        now_hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    # # To add cubes to
+    # wind_spd_cube_list = iris.cube.CubeList([])
+    # temp_cube_list = iris.cube.CubeList([])
+    # rel_hum_cube_list = iris.cube.CubeList([])
+    # rain_cube_list = iris.cube.CubeList([])
+    # vis_cube_list = iris.cube.CubeList([])
 
-        # Issue date/time of most recent MOGREPS-UK file to use
-        rec_m_date = now_hour - timedelta(hours=3)
+    # # Parrelellise in 2 chunks - should be 18 ensemble members, so 9 at a time
+    # out_lists = []
+    # for mem_list in [long_members[:9], long_members[9:]]:
 
-        # Determine how far out to go based on the oldest MOGREPS-UK file used
-        latest_lead_vdt = now_hour - timedelta(hours=8) + timedelta(hours=126)
+    #     # Use multiprocessing to process each hour in parellel
+    #     queue = Queue()
+    #     processes = []
 
-        # Go as far out as possible up to day of forecast
-        if latest_lead_vdt <= last_dt:
-            start_vdt = latest_lead_vdt - timedelta(hours=fcast_period)
-            end_vdt = latest_lead_vdt
-        else:
-            end_vdt = last_dt
-            if rec_m_date >= first_dt:
-                start_vdt = rec_m_date
-            else:
-                start_vdt = first_dt
+    #     # out_list = []
 
-        if new_data == 'yes':
+    #     # Parrallelise for each ensemble member
+    #     for member in mem_list:
 
-            # Start these as False and update later (only need to assign once)
-            rot_lon, rot_lat, orog_cube = False, False, False
+    #         # out_list.append(data_from_files(latest_mog_dir, f_nums, member))
 
-            # To add cubes to
-            wind_spd_cube_list = iris.cube.CubeList([])
-            temp_cube_list = iris.cube.CubeList([])
-            rel_hum_cube_list = iris.cube.CubeList([])
-            rain_cube_list = iris.cube.CubeList([])
-            vis_cube_list = iris.cube.CubeList([])
+    #         # Add to processes list for multiprocessing
+    #         args = (data_from_files, [latest_mog_dir, f_nums, member], queue)
+    #         processes.append(Process(target=_mp_queue, args=args))
 
-            # Use multiprocessing to process each hour in parellel
-            queue = Queue()
-            processes = []
+    #     # Start processes
+    #     for process in processes:
+    #         process.start()
 
-            # Get last 6 hours of MOGREPS-UK files (3 members per file)
-            for hour in range(8, 2, -1):
+    #     # Collect output from processes and close queue
+    #     out_list = [queue.get() for _ in processes]
+    #     queue.close()
 
-                # Add to processes list for multiprocessing, using
-                # data_from_files function
-                args = (data_from_files,
-                        [start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
-                         orog_cube, hour, now_hour, hall], queue)
-                processes.append(Process(target=_mp_queue, args=args))
+    #     # Wait for all processes to complete before continuing
+    #     for process in processes:
+    #         process.join
 
-            # Start processes
-            for process in processes:
-                process.start()
+    #     # Append output to list
+    #     out_lists.append(out_list)
 
-            # Collect output from processes and close queue
-            out_list = [queue.get() for _ in processes]
-            queue.close()
+    # # Append output to cubelists
+    # for out_list in out_lists:
+    #     for item in out_list:
+    #         wind_cubes, temp_cubes, rel_hum_cubes, rain_cubes, vis_cubes = item
+    #         for wind_cube in wind_cubes:
+    #             wind_spd_cube_list.append(wind_cube)
+    #         for temp_cube in temp_cubes:
+    #             temp_cube_list.append(temp_cube)
+    #         for rel_hum_cube in rel_hum_cubes:
+    #             rel_hum_cube_list.append(rel_hum_cube)
+    #         for rain_cube in rain_cubes:
+    #             rain_cube_list.append(rain_cube)
+    #         for vis_cube in vis_cubes:
+    #             vis_cube_list.append(vis_cube)
 
-            # Wait for all processes to complete before continuing
-            for process in processes:
-                process.join
+    # # Pickle/unpickle
+    # uf.pickle_data([wind_spd_cube_list, temp_cube_list,
+    #                 rel_hum_cube_list, rain_cube_list, vis_cube_list], 
+    #                 f'{SCRATCH_DIR}/pickle')
 
-            # Append output to cubelists
-            for item in out_list:
-                (wind_cubes, temp_cubes,
-                 rel_hum_cubes, rain_cubes, vis_cubes) = item
-                for wind_cube in wind_cubes:
-                    wind_spd_cube_list.append(wind_cube)
-                for temp_cube in temp_cubes:
-                    temp_cube_list.append(temp_cube)
-                for rel_hum_cube in rel_hum_cubes:
-                    rel_hum_cube_list.append(rel_hum_cube)
-                for rain_cube in rain_cubes:
-                    rain_cube_list.append(rain_cube)
-                for vis_cube in vis_cubes:
-                    vis_cube_list.append(vis_cube)
+    (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list, rain_cube_list, 
+        vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
 
-            # Pickle data for later use if needed (to save time)
-            uf.pickle_data([wind_spd_cube_list, temp_cube_list,
-                            rel_hum_cube_list, rain_cube_list, vis_cube_list],
-                           f'{SCRATCH_DIR}/pickle')
+    # Calculate probabilities and make cross-section plots
+    # probs_and_plots(wind_spd_cube_list, 'wind', g_hour)
+    # probs_and_plots(temp_cube_list, 'temp', g_hour)
+    # probs_and_plots(rel_hum_cube_list, 'relative_humidity', g_hour)
+    # rain_plots(rain_cube_list, g_hour)
+    # vis_plots(vis_cube_list, g_hour)
 
-        # For testing, latest pickled data can be used
-        else:
-            # Unpickle data
-            (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
-             rain_cube_list,
-             vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
-
-        # Calculate probabilities and make cross-section plots
-        probs_and_plots(wind_spd_cube_list, 'wind', start_vdt, end_vdt,
-                        rec_m_date, site_fname)
-        probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date,
-                        site_fname)
-        probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
-                        end_vdt, rec_m_date, site_fname)
-        rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
-        vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
-
-        # Update HTML page
-        date_str = rec_m_date.strftime('%Y%m%d%HZ')
-        update_html(date_str, site_height, site_name, site_fname)
+    # Update HTML page
+    date_str = g_hour.strftime('%Y%m%d%HZ')
+    update_html(date_str)
 
 
 if __name__ == "__main__":
@@ -1133,11 +1043,14 @@ if __name__ == "__main__":
     # Print time
     time_1 = uf.print_time('started')
 
-    # User determines whether new data required
-    new_data = sys.argv[1]
-
     # If code fails, try changing HPC hall
-    main(new_data, 'xcel01')
+    # try:
+    main('xcfl01')
+    print('xcfl hall used')
+    # except Exception:
+        # print('Changing hall')
+        # main('xcel01')
+        # print('xcel hall used')
 
     # Print time
     time_2 = uf.print_time('Finished')
