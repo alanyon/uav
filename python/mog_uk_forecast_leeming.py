@@ -1118,8 +1118,8 @@ def main(new_data, hall):
                         rec_m_date, site_fname)
         probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date,
                         site_fname)
-        probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
-                        end_vdt, rec_m_date, site_fname)
+        # probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
+        #                 end_vdt, rec_m_date, site_fname)
         rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
         vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
 
