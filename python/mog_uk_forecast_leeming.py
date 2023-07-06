@@ -170,11 +170,16 @@ def get_rel_hums(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
     spec_hum_cube_m = iris.load_cube(fname_m, SPEC_HUM_CON)
     temp_cube_m = iris.load_cube(fname_m, TEMP_CON)
     pres_cube_m = iris.load_cube(fname_m, PRES_CON)
-    rel_hum_cube_s = iris.load_cube(fname_s, REL_HUM_CON)
+    # rel_hum_cube_s = iris.load_cube(fname_s, REL_HUM_CON)
+
+    # print('spec_hum_cube_m', spec_hum_cube_m)
+    # print('temp_cube_m', temp_cube_m)
+    # print('pres_cube_m', pres_cube_m)
+    # print('rel_hum_cube_s', rel_hum_cube_s)
 
     # Changes to enable concatenating
-    rel_hum_cube_s = surf_to_levels(rel_hum_cube_s, spec_hum_cube_m)
-    rel_hum_cube_s.standard_name = 'relative_humidity'
+    # rel_hum_cube_s = surf_to_levels(rel_hum_cube_s, spec_hum_cube_m)
+    # rel_hum_cube_s.standard_name = 'relative_humidity'
 
     # Sample points for interpolating for site location lats/lons
     sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
@@ -186,8 +191,8 @@ def get_rel_hums(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
                               end_vdt, 'celsius')
     pres_cube_m = update_cube(pres_cube_m, sample_pnts, orog_cube, start_vdt,
                               end_vdt, 'hPa')
-    rel_hum_cube_s = update_cube(rel_hum_cube_s, sample_pnts, orog_cube,
-                                 start_vdt, end_vdt, '')
+    # rel_hum_cube_s = update_cube(rel_hum_cube_s, sample_pnts, orog_cube,
+    #                              start_vdt, end_vdt, '')
 
     # Get pressure cube on same model levels as temp and humidity cubes
     sample_pnts = [('model_level_number',
@@ -196,20 +201,23 @@ def get_rel_hums(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
     pres_cube_m = temp_cube_m.copy(data=pres_cube_m.data)
 
     # Convert model level cube from specific humidity to relative humidity
-    rel_hum_cube_m = spec_hum_to_rel_hum(spec_hum_cube_m, pres_cube_m,
+    rel_hum_cube = spec_hum_to_rel_hum(spec_hum_cube_m, pres_cube_m,
                                          temp_cube_m)
 
-    # Concatenate surface and model levels cubes
-    rel_hum_cube = iris.cube.CubeList([rel_hum_cube_s,
-                                       rel_hum_cube_m]).concatenate_cube()
+    # # Concatenate surface and model levels cubes
+    # rel_hum_cube = iris.cube.CubeList([rel_hum_cube_s,
+    #                                    rel_hum_cube_m]).concatenate_cube()
 
-    # Add derived altitude coordinate back in (disappears after concatenating)
-    fact = iris.aux_factory.HybridHeightFactory(
-        rel_hum_cube.coord('level_height'),
-        rel_hum_cube.coord('sigma'),
-        rel_hum_cube.coord('surface_altitude'))
+    # print('rel_hum_cube', rel_hum_cube)
+    # exit()
 
-    rel_hum_cube.add_aux_factory(fact)
+    # # Add derived altitude coordinate back in (disappears after concatenating)
+    # fact = iris.aux_factory.HybridHeightFactory(
+    #     rel_hum_cube.coord('level_height'),
+    #     rel_hum_cube.coord('sigma'),
+    #     rel_hum_cube.coord('surface_altitude'))
+
+    # rel_hum_cube.add_aux_factory(fact)
 
     return rel_hum_cube
 
@@ -309,7 +317,6 @@ def update_cube(cube, sample_pnts, orog_cube, start_vdt, end_vdt, c_units):
     # Convert units if necessary (knots for wind, celsius for temps)
     if c_units:
         cube.convert_units(c_units)
-
 
     # Convert altitude units from metres to feet
     cube.coord('altitude').convert_units('feet')
@@ -743,11 +750,19 @@ def get_fname_strs(m_date, start_vdt, end_vdt, hall):
     f_nums = []
     for num in FNAME_NUMS:
 
+        # Lead times in files generally 3 hours after filee name number
+        # eg pd006 file contains T+7, T+8 and T+9
+        lead_adds = list(range(int(num) + 1, int(num) + 4))
+
+        # But 000 file also contains T+0
+        if num == '000':
+            lead_adds.insert(0, int(num))
+
         # Append to f_nums if file contains data for forecast date
-        for lead in range(int(num), int(num) + 4):
+        for lead_add in lead_adds:
 
             # Get valid date
-            vdt = m_date + timedelta(hours=lead)
+            vdt = m_date + timedelta(hours=lead_add)
 
             # Check if file has any relevant valid dates in it and append to
             # list if so
@@ -855,7 +870,6 @@ def probs_and_plots(cube_list, param, start_vdt, end_vdt, m_date, site_fname):
 
         # Find forecasts valid for hour and append to cube list
         for cube in cube_list:
-
             for time_cube in cube.slices_over("time"):
                 time_int = time_cube.coord('time').points[0]
 
@@ -936,14 +950,14 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 except:
                     print('Temps failed')
 
-                # # Get relative humidity cube
-                # try:
-                #     rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
-                #                             rot_lat, rot_lon, start_vdt,
-                #                             end_vdt)
-                #     rel_hum_cubes.append(rel_hums)
-                # except:
-                #     print('Humidity failed')
+                # Get relative humidity cube
+                try:
+                    rel_hums = get_rel_hums(scratch_s, scratch_m, orog_cube,
+                                            rot_lat, rot_lon, start_vdt,
+                                            end_vdt)
+                    rel_hum_cubes.append(rel_hums)
+                except:
+                    print('Humidity failed')
 
                 # Get precip cube
                 try:
@@ -1067,6 +1081,9 @@ def main(new_data, hall):
             # Get last 6 hours of MOGREPS-UK files (3 members per file)
             for hour in range(8, 2, -1):
 
+                # data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon,
+                #          orog_cube, hour, now_hour, hall)
+
                 # Add to processes list for multiprocessing, using
                 # data_from_files function
                 args = (data_from_files,
@@ -1118,8 +1135,8 @@ def main(new_data, hall):
                         rec_m_date, site_fname)
         probs_and_plots(temp_cube_list, 'temp', start_vdt, end_vdt, rec_m_date,
                         site_fname)
-        # probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
-        #                 end_vdt, rec_m_date, site_fname)
+        probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
+                        end_vdt, rec_m_date, site_fname)
         rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
         vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
 
