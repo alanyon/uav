@@ -64,7 +64,7 @@ MPH_TO_KTS = 0.86897423357831
 # Threshold lists (wind thresholds need to be in knots as well as mph)
 WIND_THRESHS = [12, 15, 20, 25]
 TEMP_THRESHS = [0, 20, 25, 30]
-SFC_TEMP_THRESHS = [0]
+SFC_TEMP_THRESHS = [-3, 0, 3]
 REL_HUM_THRESHS = [40, 95]
 RAIN_THRESHS = [0.2, 1., 4.]
 VIS_THRESHS = [10000, 5000, 1000, 500, 200]
@@ -168,15 +168,11 @@ def get_sfc_temps(fname, orog_cube, lat, lon, start_vdt, end_vdt):
     # Load cube
     cube = iris.load_cube(fname, TEMP_SFC_CON)
 
-    print('cube', cube)
-
     # Sample points for interpolating for site location lats/lons
     sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
 
     # Interpolate horizontally using site lat/lon points
     cube = cube.interpolate(sample_pnts, iris.analysis.Linear())
-
-    print('cube 2', cube)
 
     # Only use forecast valid for day of forecast
     cube_list = iris.cube.CubeList([])
@@ -197,7 +193,7 @@ def get_sfc_temps(fname, orog_cube, lat, lon, start_vdt, end_vdt):
         new_cube.add_aux_coord(real_coord)
 
     # Convert units to Celcius
-    cube.convert_units('celsius')
+    new_cube.convert_units('celsius')
 
     return new_cube
 
@@ -997,7 +993,7 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 # Get surface temperature cube
                 try:
                     sfc_temps = get_sfc_temps(scratch_m, orog_cube, rot_lat,
-                                                rot_lon, start_vdt, end_vdt)
+                                              rot_lon, start_vdt, end_vdt)
                     sfc_temp_cubes.append(sfc_temps)
                 except:
                     print('Temps failed')
