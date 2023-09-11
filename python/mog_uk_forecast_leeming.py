@@ -37,6 +37,7 @@ U_CON = iris.AttributeConstraint(STASH='m01s00i002')
 V_CON = iris.AttributeConstraint(STASH='m01s00i003')
 OROG_CON = iris.AttributeConstraint(STASH='m01s00i033')
 TEMP_1P5_CON = iris.AttributeConstraint(STASH='m01s03i236')
+TEMP_SFC_CON = iris.AttributeConstraint(STASH='m01s00i024')
 TEMP_CON = iris.AttributeConstraint(STASH='m01s16i004')
 SPEC_HUM_CON = iris.AttributeConstraint(STASH='m01s00i010')
 PRES_CON = iris.AttributeConstraint(STASH='m01s00i408')
@@ -54,7 +55,7 @@ LATS = [54.2925]
 LONS = [-1.535556]
 SITE_HEIGHTS = [40]
 SITE_NAMES = ['Leeming']
-# ==============================================================================
+# =============================================================================
 
 # Lead time numbers used in filenames
 FNAME_NUMS = [str(num).zfill(3) for num in range(0, 126, 3)]
@@ -63,6 +64,7 @@ MPH_TO_KTS = 0.86897423357831
 # Threshold lists (wind thresholds need to be in knots as well as mph)
 WIND_THRESHS = [12, 15, 20, 25]
 TEMP_THRESHS = [0, 20, 25, 30]
+SFC_TEMP_THRESHS = [0]
 REL_HUM_THRESHS = [40, 95]
 RAIN_THRESHS = [0.2, 1., 4.]
 VIS_THRESHS = [10000, 5000, 1000, 500, 200]
@@ -158,6 +160,46 @@ def get_temps(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
                             end_vdt, 'celsius')
 
     return temp_cube
+
+
+def get_sfc_temps(fname, orog_cube, lat, lon, start_vdt, end_vdt):
+
+
+    # Load cube
+    cube = iris.load_cube(fname, TEMP_SFC_CON)
+
+    print('cube', cube)
+
+    # Sample points for interpolating for site location lats/lons
+    sample_pnts = [('grid_latitude', lat), ('grid_longitude', lon)]
+
+    # Interpolate horizontally using site lat/lon points
+    cube = cube.interpolate(sample_pnts, iris.analysis.Linear())
+
+    print('cube 2', cube)
+
+    # Only use forecast valid for day of forecast
+    cube_list = iris.cube.CubeList([])
+    for ind, time_int in enumerate(cube.coord('time').points):
+        vdt = cube.coord('time').units.num2date(time_int)
+        if start_vdt <= vdt <= end_vdt:
+            cube_list.append(cube[ind])
+
+    # Merge into single cube
+    new_cube = cube_list.merge_cube()
+
+    # Add in realisation coordinate for control member to enable merging later
+    # (use arbitrary value of 100)
+    try:
+        new_cube.coord('realization')
+    except:
+        real_coord = iris.coords.DimCoord(100, 'realization', units='1')
+        new_cube.add_aux_coord(real_coord)
+
+    # Convert units to Celcius
+    cube.convert_units('celsius')
+
+    return new_cube
 
 
 def get_rel_hums(fname_s, fname_m, orog_cube, lat, lon, start_vdt, end_vdt):
@@ -452,7 +494,7 @@ def rain_probs(cube, threshold):
     return probs_cube
 
 
-def vis_probs(cube, threshold):
+def vis_temp_probs(cube, threshold):
 
     # Calculate probabilities of exceeding threshold
     events = [(mem_cube.data <= threshold).astype(int)
@@ -527,12 +569,13 @@ def rain_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
      for probs_cube, thresh in zip(merged_probs, RAIN_THRESHS)]
 
 
-def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
+def vis_sfc_temp_plots(cube_list, start_vdt, end_vdt, m_date, 
+                       site_fname, threshs, wx_type, title_str, units):
     """
     Makes cross section plot over time.
     """
     # Make empty cube list to append to for each threshold
-    prob_lists = [iris.cube.CubeList([]) for _ in VIS_THRESHS]
+    prob_lists = [iris.cube.CubeList([]) for _ in threshs]
 
     # Number of 1 hour forecast periods
     num_fps = int((end_vdt - start_vdt).total_seconds() / 3600)
@@ -559,7 +602,8 @@ def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
         # Merge cube
         hour_cube = hour_cubes[vdt].merge_cube()
 
-        prob_cubes = [vis_probs(hour_cube, thresh) for thresh in VIS_THRESHS]
+        prob_cubes = [vis_temp_probs(hour_cube, thresh) 
+                      for thresh in threshs]
 
         # Append probability cubes to cube lists
         [prob_list.append(prob_cube)
@@ -569,9 +613,9 @@ def vis_plots(cube_list, start_vdt, end_vdt, m_date, site_fname):
     merged_probs = [prob_list.merge_cube() for prob_list in prob_lists]
 
     # Make some plots
-    [prob_plot(probs_cube, m_date, thresh, 'vis', '1.5m visibility below', 'm',
+    [prob_plot(probs_cube, m_date, thresh, wx_type, title_str, units,
                site_fname)
-     for probs_cube, thresh in zip(merged_probs, VIS_THRESHS)]
+     for probs_cube, thresh in zip(merged_probs, threshs)]
 
 
 def prob_plot(cube, issue_dt, threshold, wx_type, title_str, units,
@@ -905,8 +949,8 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
     m_date = now_hour - timedelta(hours=hour)
 
     # To append cubes to
-    (wind_cubes, temp_cubes,
-     rel_hum_cubes, rain_cubes, vis_cubes) = [], [], [], [], []
+    (wind_cubes, temp_cubes, sfc_temp_cubes,
+     rel_hum_cubes, rain_cubes, vis_cubes) = [], [], [], [], [], []
 
     # Determine ensemble member numbers used and lead times to use
     member_strs, f_nums = get_fname_strs(m_date, start_vdt, end_vdt, hall)
@@ -945,8 +989,16 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
                 # Get temperature cube
                 try:
                     temps = get_temps(scratch_s, scratch_m, orog_cube, rot_lat,
-                                        rot_lon, start_vdt, end_vdt)
+                                      rot_lon, start_vdt, end_vdt)
                     temp_cubes.append(temps)
+                except:
+                    print('Temps failed')
+
+                # Get surface temperature cube
+                try:
+                    sfc_temps = get_sfc_temps(scratch_m, orog_cube, rot_lat,
+                                                rot_lon, start_vdt, end_vdt)
+                    sfc_temp_cubes.append(sfc_temps)
                 except:
                     print('Temps failed')
 
@@ -983,7 +1035,8 @@ def data_from_files(start_vdt, end_vdt, lat, lon, rot_lat, rot_lon, orog_cube,
             else:
                 print('FILE(S) MISSING')
 
-    return wind_cubes, temp_cubes, rel_hum_cubes, rain_cubes, vis_cubes
+    return (wind_cubes, temp_cubes, sfc_temp_cubes, rel_hum_cubes, 
+            rain_cubes, vis_cubes)
 
 
 def spec_hum_to_rel_hum(spec_hum_cube, pressure_cube, t_dry_cube):
@@ -1070,6 +1123,7 @@ def main(new_data, hall):
             # To add cubes to
             wind_spd_cube_list = iris.cube.CubeList([])
             temp_cube_list = iris.cube.CubeList([])
+            sfc_temp_cube_list = iris.cube.CubeList([])
             rel_hum_cube_list = iris.cube.CubeList([])
             rain_cube_list = iris.cube.CubeList([])
             vis_cube_list = iris.cube.CubeList([])
@@ -1105,12 +1159,14 @@ def main(new_data, hall):
 
             # Append output to cubelists
             for item in out_list:
-                (wind_cubes, temp_cubes,
+                (wind_cubes, temp_cubes, sfc_temp_cubes,
                  rel_hum_cubes, rain_cubes, vis_cubes) = item
                 for wind_cube in wind_cubes:
                     wind_spd_cube_list.append(wind_cube)
                 for temp_cube in temp_cubes:
                     temp_cube_list.append(temp_cube)
+                for sfc_temp_cube in sfc_temp_cubes:
+                    sfc_temp_cube_list.append(sfc_temp_cube)
                 for rel_hum_cube in rel_hum_cubes:
                     rel_hum_cube_list.append(rel_hum_cube)
                 for rain_cube in rain_cubes:
@@ -1119,15 +1175,16 @@ def main(new_data, hall):
                     vis_cube_list.append(vis_cube)
 
             # Pickle data for later use if needed (to save time)
-            uf.pickle_data([wind_spd_cube_list, temp_cube_list,
-                            rel_hum_cube_list, rain_cube_list, vis_cube_list],
+            uf.pickle_data([wind_spd_cube_list, temp_cube_list, 
+                            sfc_temp_cube_list, rel_hum_cube_list, 
+                            rain_cube_list, vis_cube_list],
                            f'{SCRATCH_DIR}/pickle')
 
         # For testing, latest pickled data can be used
         else:
             # Unpickle data
-            (wind_spd_cube_list, temp_cube_list, rel_hum_cube_list,
-             rain_cube_list,
+            (wind_spd_cube_list, temp_cube_list, sfc_temp_cube_list, 
+             rel_hum_cube_list, rain_cube_list,
              vis_cube_list) = uf.unpickle_data(f'{SCRATCH_DIR}/pickle')
 
         # Calculate probabilities and make cross-section plots
@@ -1138,7 +1195,12 @@ def main(new_data, hall):
         probs_and_plots(rel_hum_cube_list, 'relative_humidity', start_vdt,
                         end_vdt, rec_m_date, site_fname)
         rain_plots(rain_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
-        vis_plots(vis_cube_list, start_vdt, end_vdt, rec_m_date, site_fname)
+        vis_sfc_temp_plots(vis_cube_list, start_vdt, end_vdt, 
+                           rec_m_date, site_fname, VIS_THRESHS, 'vis', 
+                           '1.5m visibility below', 'm')
+        vis_sfc_temp_plots(sfc_temp_cube_list, start_vdt, end_vdt, 
+                           rec_m_date, site_fname, SFC_TEMP_THRESHS,
+                           'sfc_temp', 'surface temperature below', 'C')
 
         # Update HTML page
         date_str = rec_m_date.strftime('%Y%m%d%HZ')
