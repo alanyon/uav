@@ -64,7 +64,7 @@ MPH_TO_KTS = 0.86897423357831
 # Threshold lists (wind thresholds need to be in knots as well as mph)
 WIND_THRESHS = [12, 15, 20, 25]
 TEMP_THRESHS = [0, 20, 25, 30]
-SFC_TEMP_THRESHS = [-3, 0, 3, 15]
+SFC_TEMP_THRESHS = [-3, 0, 3]
 REL_HUM_THRESHS = [40, 95]
 RAIN_THRESHS = [0.2, 1., 4.]
 VIS_THRESHS = [10000, 5000, 1000, 500, 200]
