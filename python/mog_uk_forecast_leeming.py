@@ -438,7 +438,7 @@ def x_plot(cube, issue_dt, param, threshold, temp_thresh, units, site_fname):
         contour.set_edgecolor("face")
 
     # Set limits and labels
-    ax.set_ylim(0, 200)
+    ax.set_ylim(0, 400)
     ax.set_ylabel('Altitude above ground level (ft)')
 
     # Format dates
